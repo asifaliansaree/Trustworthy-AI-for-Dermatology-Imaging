@@ -1,0 +1,5 @@
+venv/
+__pycache__/
+.DS_Store
+cifar10/data/
+trustworthy AI for Dermatology Imaging/
