@@ -1,33 +1,95 @@
 # Trustworthy AI for Dermatology Imaging
 
-Learning PyTorch and deep learning for dermatology image analysis.
-# Trustworthy AI for Dermatology Imaging
-
 This repository documents my learning journey in PyTorch, deep learning, and trustworthy AI for dermatology image analysis.
+
+## Project Goal
+
+To build a strong foundation in deep learning and apply trustworthy AI techniques to dermatology imaging datasets such as HAM10000 for skin lesion classification and analysis.
+
+---
 
 ## Day 1 Progress
 
-### Task 1: Environment Setup
-- Installed Python 3.10+
-- Created and activated a virtual environment
-- Upgraded pip
-- Installed PyTorch, TorchVision, and TorchAudio
-- Verified PyTorch installation
+### Environment Setup
+- Installed Python and configured a virtual environment
+- Installed PyTorch, TorchVision, and supporting libraries
+- Set up VS Code with Python, Pylance, and Jupyter extensions
+- Verified PyTorch installation using a test script
 
-### Task 2: Git & GitHub Setup
-- Installed Git
-- Created a GitHub repository
+### Git & GitHub Setup
+- Installed and configured Git
+- Created the GitHub repository
 - Initialized a local Git repository
-- Created README.md
-- Made the first commit
 - Connected the local repository to GitHub
-- Successfully pushed code to the main branch
+- Created the first commit and pushed code successfully
 
-### Next Steps
+---
+
+## Day 2 Progress
+
+### First Deep Learning Project: CIFAR-10 Classification
+- Trained a Convolutional Neural Network (CNN) using the CIFAR-10 dataset in PyTorch
+- Implemented data loading with DataLoader
+- Built and trained a CNN model
+- Used a loss function and optimizer for training
+- Successfully reduced training loss across epochs
+- Saved the trained model (`cifar10_model.pth`)
+- Documented key concepts in study notes
+
+### Key Concepts Learned
+- Tensors
+- Datasets and DataLoaders
+- Convolutional Neural Networks (CNNs)
+- Loss Functions
+- Optimizers
+- Training Loops
+- Model Saving and Loading
+
+---
+
+## Repository Structure
+
+```text
+.
+├── cifar10/
+│   ├── train.py
+│
+├── notes/
+│   └── week1.md
+│
+├── test_torch.py
+├── .gitignore
+└── README.md
+```
+
+---
+
+## Technologies Used
+
+- Python
+- PyTorch
+- TorchVision
+- Git & GitHub
+- Visual Studio Code
+
+---
+
+## Next Steps
+
 - Complete the PyTorch 60-Minute Blitz tutorial
-- Learn about tensors, datasets, dataloaders, neural networks, and training loops
-- Create Week 1 study notes
+- Study the HAM10000 dataset and paper
+- Understand dermatology image classification challenges
+- Implement data preprocessing and visualization
+- Build a baseline skin lesion classification model
+- Explore explainability and trustworthy AI techniques
 
-## Goal
+---
 
-To build a strong foundation in deep learning and apply trustworthy AI techniques to dermatology imaging datasets such as HAM10000.
+## Current Status
+
+✅ Development environment configured  
+✅ PyTorch installed and verified  
+✅ GitHub workflow established  
+✅ First CNN model trained successfully  
+✅ Study notes created  
+🔄 Preparing for HAM10000 dataset exploration
