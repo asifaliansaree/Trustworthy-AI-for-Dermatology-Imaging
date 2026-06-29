@@ -13,6 +13,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 - **Day 1:** Development environment setup and Git/GitHub
 - **Day 2:** First Convolutional Neural Network (CNN) using the CIFAR-10 dataset
 - **Day 3:** HAM10000 dataset study and PyTorch review
+- **Day 4:** HAM10000 dataset exploration and visualization
 
 ---
 
@@ -40,10 +41,10 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 ### First Deep Learning Project: CIFAR-10 Classification
 
 - Trained a Convolutional Neural Network (CNN) using the CIFAR-10 dataset
-- Implemented data loading with PyTorch `DataLoader`
+- Implemented data loading with PyTorch DataLoader
 - Built and trained a CNN model
 - Used a loss function and optimizer for training
-- Reduced training loss across multiple epochs
+- Observed decreasing training loss across epochs
 - Saved the trained model (`cifar10_model.pth`)
 - Documented key concepts in study notes
 
@@ -64,32 +65,40 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ### HAM10000 Dataset Study
 
-- Read the title, abstract, introduction, and dataset sections of the HAM10000 research paper
-- Learned why the HAM10000 dataset was created and why it is widely used in AI research
-- Studied the seven skin lesion classes included in the dataset
-- Explored the dataset structure, including image folders and metadata
-- Documented the dataset organization and metadata fields
-- Created detailed notes in `notes/ham10000_intro.md`
+- Read the HAM10000 research paper
+- Learned why the dataset was created
+- Studied the seven skin lesion classes
+- Explored the metadata and dataset organization
+- Created study notes (`notes/ham10000_intro.md`)
 
 ### PyTorch Review
 
 - Reviewed the PyTorch 60-Minute Blitz tutorial
-- Reinforced understanding of:
-  - Tensors
-  - Datasets
-  - DataLoader
-  - Neural Networks
-  - Training Loops
-- Connected these concepts to future work with the HAM10000 dataset
+- Reinforced understanding of tensors, datasets, DataLoaders, neural networks, and training loops
+
+---
+
+## Day 4 Progress
+
+### HAM10000 Dataset Exploration
+
+- Downloaded the HAM10000 dataset
+- Organized images and metadata into the project structure
+- Loaded the metadata using Pandas
+- Explored the dataset statistics
+- Verified the dataset contains **10,015 dermoscopic images**
+- Analyzed the distribution of the **7 skin lesion classes**
+- Identified missing values in the metadata
+- Displayed sample skin lesion images with their diagnosis labels using Matplotlib
 
 ### Key Concepts Learned
 
-- HAM10000 dataset organization
-- Dermoscopic image datasets
-- Metadata and diagnosis labels
-- Skin lesion classification
 - Medical image datasets
-- PyTorch data pipeline
+- Metadata analysis
+- Data exploration with Pandas
+- Class imbalance in medical datasets
+- Image visualization with Matplotlib
+- Preparing datasets for deep learning
 
 ---
 
@@ -98,7 +107,16 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 ```text
 .
 ├── cifar10/
-│   └── train.py
+│   ├── train.py
+│   └── cifar10_model.pth
+│
+├── ham10000/
+│   ├── data/
+│   │   ├── HAM10000_images_part_1/
+│   │   ├── HAM10000_images_part_2/
+│   │   └── HAM10000_metadata.csv
+│   ├── explore_dataset.py
+│   └── show_images.py
 │
 ├── notes/
 │   ├── week1.md
@@ -117,6 +135,9 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 - Python
 - PyTorch
 - TorchVision
+- Pandas
+- Matplotlib
+- Pillow
 - Git
 - GitHub
 - Visual Studio Code
@@ -125,11 +146,9 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ## Next Steps
 
-- Download and explore the HAM10000 dataset
-- Load images and metadata using PyTorch
-- Build a custom PyTorch `Dataset` class
-- Visualize sample skin lesion images
-- Preprocess the dataset for training
+- Build a custom PyTorch Dataset class for HAM10000
+- Apply image preprocessing and transformations
+- Create DataLoaders for training and validation
 - Train a baseline CNN on the HAM10000 dataset
 - Evaluate model performance
 - Explore explainability and trustworthy AI techniques
@@ -142,8 +161,8 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 - Verified PyTorch installation
 - Established a GitHub workflow
 - Trained a CNN on the CIFAR-10 dataset
-- Studied the HAM10000 dataset and research paper
-- Documented the seven skin lesion classes
-- Understood the dataset structure and metadata
-- Reviewed core PyTorch concepts
-- Prepared to begin working with the HAM10000 dataset in PyTorch
+- Studied the HAM10000 research paper
+- Downloaded and organized the HAM10000 dataset
+- Explored metadata and class distribution
+- Visualized sample skin lesion images
+- Ready to build a custom PyTorch Dataset and begin model training on HAM10000
