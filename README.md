@@ -10,24 +10,32 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ## Learning Timeline
 
+### Week 1
+
 * **Day 1:** Development environment setup and Git/GitHub
 * **Day 2:** First Convolutional Neural Network (CNN) using the CIFAR-10 dataset
 * **Day 3:** HAM10000 dataset study and PyTorch review
 * **Day 4:** HAM10000 dataset exploration and visualization
 * **Day 5:** Custom PyTorch Dataset and DataLoader for HAM10000
 
+### Week 2
+
+* **Day 1:** Exploratory Data Analysis (EDA) of the HAM10000 dataset
+
 ---
 
-## Day 1 Progress
+## Week 1
 
-### Environment Setup
+### Day 1: Environment Setup
+
+#### Environment Setup
 
 * Installed Python and configured a virtual environment
 * Installed PyTorch, TorchVision, and supporting libraries
 * Set up Visual Studio Code with Python, Pylance, and Jupyter extensions
 * Verified the PyTorch installation using a test script
 
-### Git & GitHub Setup
+#### Git & GitHub Setup
 
 * Installed and configured Git
 * Created the GitHub repository
@@ -37,9 +45,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ---
 
-## Day 2 Progress
-
-### First Deep Learning Project: CIFAR-10 Classification
+### Day 2: First Deep Learning Project (CIFAR-10)
 
 * Trained a Convolutional Neural Network (CNN) using the CIFAR-10 dataset
 * Implemented data loading with PyTorch DataLoader
@@ -49,7 +55,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Saved the trained model (`cifar10_model.pth`)
 * Documented key concepts in study notes
 
-### Key Concepts Learned
+#### Key Concepts Learned
 
 * Tensors
 * Datasets
@@ -62,9 +68,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ---
 
-## Day 3 Progress
-
-### HAM10000 Dataset Study
+### Day 3: HAM10000 Dataset Study
 
 * Read the HAM10000 research paper
 * Learned why the dataset was created
@@ -72,27 +76,25 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Explored the metadata and dataset organization
 * Created study notes (`notes/ham10000_intro.md`)
 
-### PyTorch Review
+#### PyTorch Review
 
 * Reviewed the PyTorch 60-Minute Blitz tutorial
 * Reinforced understanding of tensors, datasets, DataLoaders, neural networks, and training loops
 
 ---
 
-## Day 4 Progress
-
-### HAM10000 Dataset Exploration
+### Day 4: HAM10000 Dataset Exploration
 
 * Downloaded the HAM10000 dataset
 * Organized images and metadata into the project structure
 * Loaded the metadata using Pandas
-* Explored the dataset statistics
+* Explored dataset statistics
 * Verified the dataset contains **10,015 dermoscopic images**
 * Analyzed the distribution of the **7 skin lesion classes**
 * Identified missing values in the metadata
 * Displayed sample skin lesion images with their diagnosis labels using Matplotlib
 
-### Key Concepts Learned
+#### Key Concepts Learned
 
 * Medical image datasets
 * Metadata analysis
@@ -103,14 +105,12 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ---
 
-## Day 5 Progress
-
-### Building a Custom PyTorch Dataset
+### Day 5: Custom PyTorch Dataset
 
 * Created a custom `HAM10000Dataset` class by inheriting from `torch.utils.data.Dataset`
-* Loaded the HAM10000 metadata from the CSV file using Pandas
-* Indexed images stored across two directories (`HAM10000_images_part_1` and `HAM10000_images_part_2`)
-* Created a mapping from diagnosis labels (`dx`) to numeric class labels
+* Loaded the HAM10000 metadata from the CSV file
+* Indexed images stored across two directories
+* Created a mapping from diagnosis labels to numeric class labels
 * Applied image preprocessing using `torchvision.transforms`
 * Resized images to **224 × 224**
 * Converted images into PyTorch tensors
@@ -127,15 +127,43 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Created a `DataLoader` for batch processing
 * Verified batch dimensions (`[16, 3, 224, 224]` for images and `[16]` for labels)
 
-### Key Concepts Learned
+#### Key Concepts Learned
 
-* Creating custom PyTorch `Dataset` classes
+* Creating custom PyTorch Dataset classes
 * Reading metadata from CSV files
-* Loading images from disk using Pillow
-* Mapping categorical labels to numeric values
+* Loading images from disk
+* Label encoding
 * Image preprocessing with `torchvision.transforms`
 * Batch loading using `DataLoader`
-* Preparing datasets for deep learning model training
+* Preparing datasets for CNN training
+
+---
+
+## Week 2
+
+### Day 1: Exploratory Data Analysis (EDA)
+
+* Created an interactive Jupyter notebook (`EDA.ipynb`) for exploratory data analysis
+* Loaded and explored the HAM10000 metadata
+* Examined dataset shape, column names, and data types
+* Identified missing values in the metadata
+* Found **57 missing values in the `age` column**
+* Visualized the distribution of all seven diagnosis classes
+* Analyzed patient sex distribution
+* Plotted the patient age distribution
+* Visualized lesion body localization frequencies
+* Displayed representative sample images from each diagnosis class
+* Documented observations about dataset characteristics and class imbalance
+
+#### Key Concepts Learned
+
+* Exploratory Data Analysis (EDA)
+* Metadata inspection
+* Missing value analysis
+* Data visualization with Matplotlib
+* Class imbalance analysis
+* Medical image dataset exploration
+* Interpreting patient demographic information
 
 ---
 
@@ -154,6 +182,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 │   │   └── HAM10000_metadata.csv
 │   ├── dataset.py
 │   ├── test_dataset.py
+│   ├── EDA.ipynb
 │   ├── explore_dataset.py
 │   └── show_images.py
 │
@@ -177,6 +206,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Pandas
 * Matplotlib
 * Pillow
+* Jupyter Notebook
 * Git
 * GitHub
 * Visual Studio Code
@@ -185,8 +215,9 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ## Next Steps
 
-* Split the dataset into training, validation, and test sets
-* Apply data augmentation and image normalization
+* Analyze duplicate lesions using the `lesion_id` column
+* Create patient-aware train, validation, and test splits
+* Apply image normalization and data augmentation
 * Train a baseline CNN on the HAM10000 dataset
 * Evaluate model performance using appropriate metrics
 * Experiment with pretrained models such as ResNet-18
@@ -196,14 +227,10 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ## Current Status
 
-* Completed development environment setup
-* Verified PyTorch installation
-* Established a GitHub workflow
-* Trained a CNN on the CIFAR-10 dataset
-* Studied the HAM10000 research paper
-* Downloaded and organized the HAM10000 dataset
-* Explored metadata and class distribution
-* Visualized sample skin lesion images
-* Built a custom PyTorch Dataset for HAM10000
-* Implemented image preprocessing and batch loading with DataLoader
-* Ready to split the dataset and begin training a skin lesion classification model
+* Completed Week 1 learning objectives
+* Built a custom PyTorch Dataset and DataLoader for HAM10000
+* Completed an exploratory data analysis (EDA) notebook
+* Analyzed metadata, demographics, and class imbalance
+* Identified missing values in the dataset
+* Visualized representative images from each lesion class
+* Ready to perform duplicate lesion analysis and prepare train/validation/test splits for model training
