@@ -10,10 +10,11 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ## Learning Timeline
 
-- **Day 1:** Development environment setup and Git/GitHub
-- **Day 2:** First Convolutional Neural Network (CNN) using the CIFAR-10 dataset
-- **Day 3:** HAM10000 dataset study and PyTorch review
-- **Day 4:** HAM10000 dataset exploration and visualization
+* **Day 1:** Development environment setup and Git/GitHub
+* **Day 2:** First Convolutional Neural Network (CNN) using the CIFAR-10 dataset
+* **Day 3:** HAM10000 dataset study and PyTorch review
+* **Day 4:** HAM10000 dataset exploration and visualization
+* **Day 5:** Custom PyTorch Dataset and DataLoader for HAM10000
 
 ---
 
@@ -21,18 +22,18 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ### Environment Setup
 
-- Installed Python and configured a virtual environment
-- Installed PyTorch, TorchVision, and supporting libraries
-- Set up Visual Studio Code with Python, Pylance, and Jupyter extensions
-- Verified the PyTorch installation using a test script
+* Installed Python and configured a virtual environment
+* Installed PyTorch, TorchVision, and supporting libraries
+* Set up Visual Studio Code with Python, Pylance, and Jupyter extensions
+* Verified the PyTorch installation using a test script
 
 ### Git & GitHub Setup
 
-- Installed and configured Git
-- Created the GitHub repository
-- Initialized a local Git repository
-- Connected the local repository to GitHub
-- Created the first commit and pushed the project successfully
+* Installed and configured Git
+* Created the GitHub repository
+* Initialized a local Git repository
+* Connected the local repository to GitHub
+* Created the first commit and pushed the project successfully
 
 ---
 
@@ -40,24 +41,24 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ### First Deep Learning Project: CIFAR-10 Classification
 
-- Trained a Convolutional Neural Network (CNN) using the CIFAR-10 dataset
-- Implemented data loading with PyTorch DataLoader
-- Built and trained a CNN model
-- Used a loss function and optimizer for training
-- Observed decreasing training loss across epochs
-- Saved the trained model (`cifar10_model.pth`)
-- Documented key concepts in study notes
+* Trained a Convolutional Neural Network (CNN) using the CIFAR-10 dataset
+* Implemented data loading with PyTorch DataLoader
+* Built and trained a CNN model
+* Used a loss function and optimizer for training
+* Observed decreasing training loss across epochs
+* Saved the trained model (`cifar10_model.pth`)
+* Documented key concepts in study notes
 
 ### Key Concepts Learned
 
-- Tensors
-- Datasets
-- DataLoaders
-- Convolutional Neural Networks (CNNs)
-- Loss Functions
-- Optimizers
-- Training Loops
-- Model Saving and Loading
+* Tensors
+* Datasets
+* DataLoaders
+* Convolutional Neural Networks (CNNs)
+* Loss Functions
+* Optimizers
+* Training Loops
+* Model Saving and Loading
 
 ---
 
@@ -65,16 +66,16 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ### HAM10000 Dataset Study
 
-- Read the HAM10000 research paper
-- Learned why the dataset was created
-- Studied the seven skin lesion classes
-- Explored the metadata and dataset organization
-- Created study notes (`notes/ham10000_intro.md`)
+* Read the HAM10000 research paper
+* Learned why the dataset was created
+* Studied the seven skin lesion classes
+* Explored the metadata and dataset organization
+* Created study notes (`notes/ham10000_intro.md`)
 
 ### PyTorch Review
 
-- Reviewed the PyTorch 60-Minute Blitz tutorial
-- Reinforced understanding of tensors, datasets, DataLoaders, neural networks, and training loops
+* Reviewed the PyTorch 60-Minute Blitz tutorial
+* Reinforced understanding of tensors, datasets, DataLoaders, neural networks, and training loops
 
 ---
 
@@ -82,23 +83,59 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ### HAM10000 Dataset Exploration
 
-- Downloaded the HAM10000 dataset
-- Organized images and metadata into the project structure
-- Loaded the metadata using Pandas
-- Explored the dataset statistics
-- Verified the dataset contains **10,015 dermoscopic images**
-- Analyzed the distribution of the **7 skin lesion classes**
-- Identified missing values in the metadata
-- Displayed sample skin lesion images with their diagnosis labels using Matplotlib
+* Downloaded the HAM10000 dataset
+* Organized images and metadata into the project structure
+* Loaded the metadata using Pandas
+* Explored the dataset statistics
+* Verified the dataset contains **10,015 dermoscopic images**
+* Analyzed the distribution of the **7 skin lesion classes**
+* Identified missing values in the metadata
+* Displayed sample skin lesion images with their diagnosis labels using Matplotlib
 
 ### Key Concepts Learned
 
-- Medical image datasets
-- Metadata analysis
-- Data exploration with Pandas
-- Class imbalance in medical datasets
-- Image visualization with Matplotlib
-- Preparing datasets for deep learning
+* Medical image datasets
+* Metadata analysis
+* Data exploration with Pandas
+* Class imbalance in medical datasets
+* Image visualization with Matplotlib
+* Preparing datasets for deep learning
+
+---
+
+## Day 5 Progress
+
+### Building a Custom PyTorch Dataset
+
+* Created a custom `HAM10000Dataset` class by inheriting from `torch.utils.data.Dataset`
+* Loaded the HAM10000 metadata from the CSV file using Pandas
+* Indexed images stored across two directories (`HAM10000_images_part_1` and `HAM10000_images_part_2`)
+* Created a mapping from diagnosis labels (`dx`) to numeric class labels
+* Applied image preprocessing using `torchvision.transforms`
+* Resized images to **224 × 224**
+* Converted images into PyTorch tensors
+* Implemented the required Dataset methods:
+
+  * `__init__()`
+  * `__len__()`
+  * `__getitem__()`
+* Verified dataset loading by checking:
+
+  * Dataset size (**10,015 samples**)
+  * Image tensor shape (`[3, 224, 224]`)
+  * Numeric labels
+* Created a `DataLoader` for batch processing
+* Verified batch dimensions (`[16, 3, 224, 224]` for images and `[16]` for labels)
+
+### Key Concepts Learned
+
+* Creating custom PyTorch `Dataset` classes
+* Reading metadata from CSV files
+* Loading images from disk using Pillow
+* Mapping categorical labels to numeric values
+* Image preprocessing with `torchvision.transforms`
+* Batch loading using `DataLoader`
+* Preparing datasets for deep learning model training
 
 ---
 
@@ -115,6 +152,8 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 │   │   ├── HAM10000_images_part_1/
 │   │   ├── HAM10000_images_part_2/
 │   │   └── HAM10000_metadata.csv
+│   ├── dataset.py
+│   ├── test_dataset.py
 │   ├── explore_dataset.py
 │   └── show_images.py
 │
@@ -132,37 +171,39 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 ## Technologies Used
 
-- Python
-- PyTorch
-- TorchVision
-- Pandas
-- Matplotlib
-- Pillow
-- Git
-- GitHub
-- Visual Studio Code
+* Python
+* PyTorch
+* TorchVision
+* Pandas
+* Matplotlib
+* Pillow
+* Git
+* GitHub
+* Visual Studio Code
 
 ---
 
 ## Next Steps
 
-- Build a custom PyTorch Dataset class for HAM10000
-- Apply image preprocessing and transformations
-- Create DataLoaders for training and validation
-- Train a baseline CNN on the HAM10000 dataset
-- Evaluate model performance
-- Explore explainability and trustworthy AI techniques
+* Split the dataset into training, validation, and test sets
+* Apply data augmentation and image normalization
+* Train a baseline CNN on the HAM10000 dataset
+* Evaluate model performance using appropriate metrics
+* Experiment with pretrained models such as ResNet-18
+* Explore explainability and trustworthy AI techniques (e.g., Grad-CAM, saliency maps)
 
 ---
 
 ## Current Status
 
-- Completed development environment setup
-- Verified PyTorch installation
-- Established a GitHub workflow
-- Trained a CNN on the CIFAR-10 dataset
-- Studied the HAM10000 research paper
-- Downloaded and organized the HAM10000 dataset
-- Explored metadata and class distribution
-- Visualized sample skin lesion images
-- Ready to build a custom PyTorch Dataset and begin model training on HAM10000
+* Completed development environment setup
+* Verified PyTorch installation
+* Established a GitHub workflow
+* Trained a CNN on the CIFAR-10 dataset
+* Studied the HAM10000 research paper
+* Downloaded and organized the HAM10000 dataset
+* Explored metadata and class distribution
+* Visualized sample skin lesion images
+* Built a custom PyTorch Dataset for HAM10000
+* Implemented image preprocessing and batch loading with DataLoader
+* Ready to split the dataset and begin training a skin lesion classification model
