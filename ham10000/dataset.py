@@ -4,28 +4,77 @@ from PIL import Image
 
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
+import torchvision.transforms as transforms
+
+
+# Label mapping
+CLASS_MAP = {
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
+    "vasc": 6,
+}
+
+# ImageNet normalization (recommended for pretrained models)
+MEAN = [0.485, 0.456, 0.406]
+STD = [0.229, 0.224, 0.225]
+
+
+def get_transform(split):
+    """Return transforms for each dataset split."""
+    if split == "train":
+        return transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.RandomCrop(224),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.ColorJitter(
+                brightness=0.2,
+                contrast=0.2,
+                saturation=0.2,
+            ),
+            transforms.RandomRotation(90),
+            transforms.ToTensor(),
+            transforms.Normalize(MEAN, STD),
+        ])
+    else:
+        return transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(MEAN, STD),
+        ])
 
 
 class HAM10000Dataset(Dataset):
-    def __init__(self, data_dir="ham10000/data", transform=None):
+    def __init__(
+        self,
+        data_dir="ham10000/data",
+        split="train",
+        transform=None,
+    ):
+        """
+        Args:
+            data_dir: path to data folder
+            split: 'train', 'val', or 'test'
+            transform: optional custom transform
+        """
+
+        assert split in ["train", "val", "test"]
+
         self.data_dir = data_dir
+        self.split = split
 
-        # Load metadata
-        self.df = pd.read_csv(
-            os.path.join(data_dir, "HAM10000_metadata.csv")
-        )
+        # Load split CSV
+        csv_path = os.path.join(data_dir, "HAM10000_split.csv")
+        df = pd.read_csv(csv_path)
 
-        # Label mapping
-        self.label_map = {
-            "akiec": 0,
-            "bcc": 1,
-            "bkl": 2,
-            "df": 3,
-            "mel": 4,
-            "nv": 5,
-            "vasc": 6,
-        }
+        # Keep only requested split
+        self.df = df[df["split"] == split].reset_index(drop=True)
+
+        self.label_map = CLASS_MAP
 
         # Image folders
         self.image_dirs = [
@@ -42,14 +91,16 @@ class HAM10000Dataset(Dataset):
                     image_id = file[:-4]
                     self.image_paths[image_id] = os.path.join(folder, file)
 
-        # Default transforms
+        # Use custom transform if provided
         if transform is None:
-            self.transform = transforms.Compose([
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-            ])
+            self.transform = get_transform(split)
         else:
             self.transform = transform
+
+        print(
+            f"[{split}] Loaded {len(self.df)} images "
+            f"across {self.df['dx'].nunique()} classes."
+        )
 
     def __len__(self):
         return len(self.df)
@@ -63,7 +114,6 @@ class HAM10000Dataset(Dataset):
         image_path = self.image_paths[image_id]
 
         image = Image.open(image_path).convert("RGB")
-
         image = self.transform(image)
 
         return image, label
