@@ -1,0 +1,20 @@
+seed: 42
+
+data:
+  data_dir: "ham10000/data"
+  num_workers: 2
+
+model:
+  num_classes: 7
+  metadata_dim: 0        # 0 = image-only baseline | 18 = late fusion
+  pretrained: true
+  dropout: 0.3
+
+train:
+  epochs: 20
+  batch_size: 32
+  lr: 0.0001
+  weight_decay: 0.00001
+
+output:
+  checkpoint_dir: "checkpoints"
