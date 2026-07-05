@@ -22,6 +22,9 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 
 * **Day 1:** Exploratory Data Analysis (EDA) of the HAM10000 dataset
 * **Day 2:** Lesion-wise train/validation/test split and augmented PyTorch Dataset
+* **Day 3:** Metadata analysis and integration research
+* **Day 4:** End-to-end training pipeline (model, training loop, evaluation)
+* **Day 5:** Repository polish and leakage re-verification
 
 ---
 
@@ -199,17 +202,77 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Class imbalance handling
 * Preparing datasets for transfer learning
 
+
 ---
+
+## Day 3: Metadata Analysis & Integration Research
+
+* Built `MetadataEncoder` to convert age, sex, and localization into an 18-dimensional normalized feature vector
+* Added metadata statistics to `EDA.ipynb` (age distribution, sex ratio, and top localizations per diagnosis class)
+* Researched three metadata integration techniques and ranked them by implementation effort versus expected performance (`notes/metadata_research.md`)
+* Selected **late fusion** for the current implementation
+* Planned **FiLM conditioning** as a future Week 4 ablation study
+* Logged multi-task learning as future work
+
+### Key Concepts Learned
+
+* Feature normalization using z-score
+* One-hot encoding
+* Preventing target leakage
+* Late fusion vs. FiLM conditioning
+* Research prioritization based on effort vs. expected gain
+
+---
+
+## Day 4: End-to-End Training Pipeline
+
+* Built **DermaNet**, a ResNet-18 backbone with an optional metadata late-fusion head
+* Added configuration-driven switching between image-only and metadata-fusion modes
+* Implemented a complete training pipeline (`src/train.py`)
+* Added class-weighted CrossEntropyLoss
+* Implemented validation-based checkpoint saving
+* Added YAML-based experiment configuration
+* Implemented evaluation metrics (`src/evaluate.py`) including balanced accuracy, per-class F1-score, confusion matrix, and macro ROC-AUC
+* Successfully completed a one-epoch dry run in both image-only and metadata-fusion modes
+
+### Key Concepts Learned
+
+* Transfer learning with ResNet-18
+* Class-weighted loss
+* Balanced accuracy
+* Configuration-driven experimentation
+
+---
+
+## Day 5: Repository Polish & Leakage Re-Verification
+
+* Re-ran lesion leakage verification
+* Pinned dependency versions in `requirements.txt`
+* Documented metadata research decisions
+* Updated repository documentation and structure
+
+### Key Concepts Learned
+
+* Reproducible machine learning experiments
+* Dependency management
+* Project documentation
 
 # Repository Structure
 
 ```text
 .
 ├── cifar10/
+│   ├── data/
+│   │   └── cifar-10-python.tar.gz
 │   ├── train.py
 │   └── cifar10_model.pth
 │
 ├── ham10000/
+│   ├── checkpoints/
+│   │   └── best_model.pt
+│   ├── configs/
+│   │   ├── baseline.yaml
+│   │   └── dry_run.yaml
 │   ├── data/
 │   │   ├── HAM10000_images_part_1/
 │   │   ├── HAM10000_images_part_2/
@@ -217,7 +280,12 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 │   │   ├── HAM10000_split.csv
 │   │   └── class_weights.npy
 │   │
+│   ├── src/
+│   │   ├── train.py
+│   │   ├── model.py
+│   │   └── evaluate.py
 │   ├── dataset.py
+│   ├── metadata_encoder.py
 │   ├── split.py
 │   ├── test_split.py
 │   ├── test_dataset.py
@@ -227,7 +295,8 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 │
 ├── notes/
 │   ├── week1.md
-│   └── ham10000_intro.md
+│   ├── ham10000_intro.md
+│   └── metadata_research.md
 │
 ├── test_torch.py
 ├── README.md
@@ -247,6 +316,7 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Scikit-learn
 * Matplotlib
 * Pillow
+* PyYAML
 * Jupyter Notebook
 * Git
 * GitHub
@@ -279,4 +349,67 @@ To build a strong foundation in deep learning and apply trustworthy AI technique
 * Verified successful dataset loading using the new split
 * Implemented leakage checking between train, validation, and test datasets
 * Computed class weights for imbalanced learning
-* Ready to train the first baseline deep learning model (ResNet-18) on the HAM10000 dataset
+* Built the DermaNet (ResNet-18) baseline
+* Implemented metadata fusion
+* Implemented an end-to-end training and evaluation pipeline
+* Verified successful dry runs in image-only and metadata-fusion modes
+* Ready for full-scale baseline experiments
+
+
+
+
+this is my old readme file update it to new version i will tell u all the changes that i have done 
+
+## Day 3: Metadata Analysis & Integration Research
+
+* Built `MetadataEncoder` to convert age, sex, and localization into an
+  18-dimensional normalized feature vector
+* Added a metadata statistics section to `EDA.ipynb` (age distribution,
+  sex ratio, and top localizations per class)
+* Researched three metadata-integration techniques and ranked them by
+  effort vs. expected gain (`notes/metadata_research.md`)
+* Decided on late fusion for this week; FiLM conditioning planned as a
+  Week 4 ablation; multi-task learning logged as future work
+
+### Key Concepts Learned
+
+* Feature normalization (z-score) and one-hot encoding
+* Target leakage through engineered input features
+* Late fusion vs. feature-wise conditioning (FiLM)
+* Effort-vs-gain prioritization in ML research planning
+
+---
+
+## Day 4: End-to-End Training Pipeline
+
+* Built `DermaNet`: a ResNet-18 backbone with an optional metadata
+  late-fusion head, switchable via a single config value
+* Implemented the full training loop (`src/train.py`) with class-weighted
+  loss, validation-based checkpointing, and a YAML config
+* Implemented evaluation metrics (`src/evaluate.py`): balanced accuracy,
+  per-class F1, confusion matrix, macro ROC-AUC
+* Verified the entire pipeline end-to-end with a 1-epoch dry run in both
+  image-only and metadata-fusion modes — no crashes, correct tensor shapes
+
+### Key Concepts Learned
+
+* Transfer learning with a pretrained CNN backbone
+* Class-weighted loss for imbalanced classification
+* Why balanced accuracy matters over plain accuracy
+* Config-driven, reproducible experiment design
+
+---
+
+## Day 5: Repository Polish & Leakage Re-Verification
+
+* Re-ran the lesion-leakage check to confirm the split is still leak-free
+* Pinned all dependency versions in `requirements.txt`
+* Documented Week 2 decisions and rationale in `notes/week2.md`
+* Updated the repository structure and status in `README.md`
+
+### Key Concepts Learned
+
+* Reproducibility through pinned dependencies
+* Documenting design decisions for future reference
+
+---
