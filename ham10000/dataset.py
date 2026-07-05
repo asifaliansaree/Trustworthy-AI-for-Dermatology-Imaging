@@ -54,6 +54,7 @@ class HAM10000Dataset(Dataset):
         data_dir="ham10000/data",
         split="train",
         transform=None,
+        metadata_encoder=None,
     ):
         """
         Args:
@@ -66,6 +67,8 @@ class HAM10000Dataset(Dataset):
 
         self.data_dir = data_dir
         self.split = split
+        self.metadata_encoder = metadata_encoder
+
 
         # Load split CSV
         csv_path = os.path.join(data_dir, "HAM10000_split.csv")
@@ -115,5 +118,9 @@ class HAM10000Dataset(Dataset):
 
         image = Image.open(image_path).convert("RGB")
         image = self.transform(image)
+
+        if self.metadata_encoder is not None:
+            meta = self.metadata_encoder.encode(row)
+            return image, meta, label
 
         return image, label
