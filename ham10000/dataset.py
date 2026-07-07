@@ -6,7 +6,6 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
-
 # Label mapping
 CLASS_MAP = {
     "akiec": 0,

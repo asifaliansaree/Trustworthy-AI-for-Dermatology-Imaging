@@ -19,4 +19,4 @@ train:
   
 
 output:
-  checkpoint_dir: "checkpoints"
+  checkpoint_dir: "ham10000/checkpoints"

@@ -214,6 +214,17 @@ Build a rigorous, reproducible skin-lesion classifier on HAM10000, then apply st
   * Split: lesion-wise 80/10/10, `random_state=42`
 * Monitoring epoch-level `val_balanced_accuracy` to confirm healthy training
 * Target: `val_balanced_accuracy ≥ 0.65` by epoch 20
+
+## Day 2: test-set evaluation and figures
+
+- Ran evaluate.py on the held-out test set using the best checkpoint (epoch 15)
+- Test balanced accuracy: **0.7318** — exceeds the 0.65 go/no-go threshold
+- Test macro ROC-AUC: **0.9478** — strong probability ranking across all 7 classes
+- Test macro F1: **0.6869** — lower F1 expected due to rare-class imbalance (df, vasc)
+- Generated 3 publication-quality figures (300 DPI): confusion matrix, per-class F1, training curves
+- Val→test gap of 6.5 points is within expected range for this dataset size
+- All results locked in `results/baseline_image_only.json`
+- Fixed `train.py` to write `training_log.csv` on every future run
 ---
  
 # Repository Structure
@@ -281,20 +292,19 @@ Build a rigorous, reproducible skin-lesion classifier on HAM10000, then apply st
  
 ---
  
-# Baseline Results
- 
-> *Will be populated at end of Week 3 Day 2.*
- 
-| Experiment | Balanced Acc | Macro F1 | Macro AUC | Notes |
-|------------|-------------|----------|-----------|-------|
-| Image-only (ResNet-18) | — | — | — | Week 3 Day 2 |
-| Image + Metadata (late fusion) | — | — | — | Week 3 Day 3 |
- 
+## Baseline results
+
+| Experiment              | Bal acc | Macro F1 | Macro AUC | Notes        |
+|-------------------------|---------|----------|-----------|--------------|
+| Image-only (ResNet-18)  | 0.7318  | 0.6869   | 0.9478    | Week 3 Day 2 |
+| Image + Metadata        | —       | —        | —         | Week 3 Day 3 |
+
+> Best val balanced accuracy during training: **0.7964** (epoch 15)
 ---
  
 # Current Status
  
-**Week 3 — Day 1 in progress**
+**Week 3 — Day 2 in progress**
  
 - [x] Week 1: Environment, CIFAR-10 CNN, HAM10000 exploration, custom Dataset
 - [x] Week 2: EDA, leakage-free split, augmented DataLoader, MetadataEncoder, DermaNet, train/evaluate pipeline, dry run verified

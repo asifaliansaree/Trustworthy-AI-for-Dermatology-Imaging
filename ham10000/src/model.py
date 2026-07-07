@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-
 class DermaNet(nn.Module):
     def __init__(self, num_classes=7, metadata_dim=0, pretrained=True, dropout=0.3):
         super().__init__()

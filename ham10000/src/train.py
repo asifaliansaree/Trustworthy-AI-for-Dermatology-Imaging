@@ -1,4 +1,4 @@
-import os, sys, random, time, argparse
+import os, sys, random, time, argparse, csv
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,100 +19,255 @@ import evaluate
 
 
 def set_seed(seed):
-    random.seed(seed); np.random.seed(seed)
-    torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def build_dataloaders(cfg):
     metadata_dim = cfg['model']['metadata_dim']
     encoder = None
+
     if metadata_dim > 0:
         split_csv = os.path.join(cfg['data']['data_dir'], "HAM10000_split.csv")
         encoder = MetadataEncoder(split_csv)
+
         assert encoder.dim == metadata_dim, \
             f"config metadata_dim={metadata_dim} but encoder produces {encoder.dim}-d vectors"
 
     loaders = {}
+
     for split in ['train', 'val', 'test']:
-        ds = HAM10000Dataset(data_dir=cfg['data']['data_dir'], split=split,
-                              metadata_encoder=encoder)
-        loaders[split] = DataLoader(ds, batch_size=cfg['train']['batch_size'],
-                                     shuffle=(split == 'train'),
-                                     num_workers=cfg['data'].get('num_workers', 0))
+        ds = HAM10000Dataset(
+            data_dir=cfg['data']['data_dir'],
+            split=split,
+            metadata_encoder=encoder
+        )
+
+        loaders[split] = DataLoader(
+            ds,
+            batch_size=cfg['train']['batch_size'],
+            shuffle=(split == 'train'),
+            num_workers=cfg['data'].get('num_workers', 0)
+        )
+
     return loaders
 
 
 def run_epoch(model, loader, criterion, optimizer, device, use_metadata, train_mode):
+
     model.train() if train_mode else model.eval()
-    total_loss, n_batches = 0.0, 0
+
+    total_loss = 0.0
+    n_batches = 0
+
     torch.set_grad_enabled(train_mode)
+
     for batch in loader:
+
         if use_metadata:
             images, meta, labels = batch
             meta = meta.to(device)
         else:
             images, labels = batch
             meta = None
-        images, labels = images.to(device), labels.to(device)
+
+        images = images.to(device)
+        labels = labels.to(device)
+
         logits = model(images, meta)
         loss = criterion(logits, labels)
+
         if train_mode:
-            optimizer.zero_grad(); loss.backward(); optimizer.step()
-        total_loss += loss.item(); n_batches += 1
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        total_loss += loss.item()
+        n_batches += 1
+
     torch.set_grad_enabled(True)
+
     return total_loss / max(n_batches, 1)
 
 
 def main(config_path):
+
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
+
     set_seed(cfg['seed'])
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
 
     loaders = build_dataloaders(cfg)
+
     use_metadata = cfg['model']['metadata_dim'] > 0
+
     print(f"Mode: {'late fusion' if use_metadata else 'image-only baseline'}")
 
-    model = DermaNet(num_classes=cfg['model']['num_classes'],
-                      metadata_dim=cfg['model']['metadata_dim'],
-                      pretrained=cfg['model']['pretrained'],
-                      dropout=cfg['model']['dropout']).to(device)
+    model = DermaNet(
+        num_classes=cfg['model']['num_classes'],
+        metadata_dim=cfg['model']['metadata_dim'],
+        pretrained=cfg['model']['pretrained'],
+        dropout=cfg['model']['dropout']
+    ).to(device)
 
     class_weights = torch.tensor(
-        np.load(os.path.join(cfg['data']['data_dir'], "class_weights.npy")),
+        np.load(
+            os.path.join(
+                cfg['data']['data_dir'],
+                "class_weights.npy"
+            )
+        ),
         dtype=torch.float32
     ).to(device)
+
     criterion = nn.CrossEntropyLoss(weight=class_weights)
-    optimizer = torch.optim.Adam(model.parameters(), lr=cfg['train']['lr'],
-                                  weight_decay=cfg['train']['weight_decay'])
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['train']['epochs'])
+
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=cfg['train']['lr'],
+        weight_decay=cfg['train']['weight_decay']
+    )
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer,
+        T_max=cfg['train']['epochs']
+    )
 
     os.makedirs(cfg['output']['checkpoint_dir'], exist_ok=True)
-    best_val = -float('inf')
+
+    # --------------------------------------------------
+    # Create training log folder
+    # --------------------------------------------------
+
+    save_dir = os.path.join(
+        "ham10000",
+        "experiments",
+        "baseline_image_only"
+    )
+
+    os.makedirs(save_dir, exist_ok=True)
+
+    log_path = os.path.join(
+        save_dir,
+        "training_log.csv"
+    )
+
+    # Remove previous log
+    if os.path.exists(log_path):
+        os.remove(log_path)
+
+    best_val = -float("inf")
 
     for epoch in range(1, cfg['train']['epochs'] + 1):
+
         t0 = time.time()
-        train_loss = run_epoch(model, loaders['train'], criterion, optimizer, device, use_metadata, True)
-        val_loss = run_epoch(model, loaders['val'], criterion, optimizer, device, use_metadata, False)
-        y_true, y_pred, y_probs = evaluate.run_inference(model, loaders['val'], device, use_metadata)
-        val_bal_acc = evaluate.compute_metrics(y_true, y_pred, y_probs)['balanced_accuracy']
+
+        train_loss = run_epoch(
+            model,
+            loaders['train'],
+            criterion,
+            optimizer,
+            device,
+            use_metadata,
+            True
+        )
+
+        val_loss = run_epoch(
+            model,
+            loaders['val'],
+            criterion,
+            optimizer,
+            device,
+            use_metadata,
+            False
+        )
+
+        y_true, y_pred, y_probs = evaluate.run_inference(
+            model,
+            loaders['val'],
+            device,
+            use_metadata
+        )
+
+        val_bal_acc = evaluate.compute_metrics(
+            y_true,
+            y_pred,
+            y_probs
+        )['balanced_accuracy']
+
         scheduler.step()
-        print(f"Epoch {epoch:3d}/{cfg['train']['epochs']} | train_loss {train_loss:.4f} | "
-              f"val_loss {val_loss:.4f} | val_bal_acc {val_bal_acc:.4f} | {time.time()-t0:.1f}s")
+
+        print(
+            f"Epoch {epoch:3d}/{cfg['train']['epochs']} | "
+            f"train_loss {train_loss:.4f} | "
+            f"val_loss {val_loss:.4f} | "
+            f"val_bal_acc {val_bal_acc:.4f} | "
+            f"{time.time()-t0:.1f}s"
+        )
+
+        # --------------------------------------------------
+        # Save training log
+        # --------------------------------------------------
+
+        with open(log_path, "a", newline="") as f:
+
+            writer = csv.writer(f)
+
+            if epoch == 1:
+                writer.writerow([
+                    "epoch",
+                    "train_loss",
+                    "val_loss",
+                    "val_bal_acc",
+                    "lr"
+                ])
+
+            writer.writerow([
+                epoch,
+                round(train_loss, 4),
+                round(val_loss, 4),
+                round(val_bal_acc, 4),
+                round(scheduler.get_last_lr()[0], 6)
+            ])
 
         if val_bal_acc > best_val:
+
             best_val = val_bal_acc
-            ckpt = os.path.join(cfg['output']['checkpoint_dir'], 'best_model.pt')
-            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
-                        'val_balanced_accuracy': val_bal_acc, 'config': cfg}, ckpt)
+
+            ckpt = os.path.join(
+                cfg['output']['checkpoint_dir'],
+                "best_model.pt"
+            )
+
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "val_balanced_accuracy": val_bal_acc,
+                    "config": cfg,
+                },
+                ckpt,
+            )
+
             print(f"  -> new best ({val_bal_acc:.4f}), saved to {ckpt}")
 
     print(f"Best val balanced accuracy: {best_val:.4f}")
 
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='configs/baseline.yaml')
+
+    parser.add_argument(
+        "--config",
+        default="configs/baseline.yaml"
+    )
+
     args = parser.parse_args()
+
     main(args.config)
