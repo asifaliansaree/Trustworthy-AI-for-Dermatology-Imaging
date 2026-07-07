@@ -6,15 +6,17 @@ data:
 
 model:
   num_classes: 7
-  metadata_dim: 0        # 0 = image-only baseline | 18 = late fusion
+  metadata_dim: 0        
   pretrained: true
   dropout: 0.3
+  metadata_dim: 0        
 
 train:
   epochs: 20
   batch_size: 32
   lr: 0.0001
   weight_decay: 0.00001
+  
 
 output:
   checkpoint_dir: "checkpoints"
