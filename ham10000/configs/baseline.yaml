@@ -19,4 +19,9 @@ train:
   
 
 output:
-  checkpoint_dir: "ham10000/checkpoints"
+  checkpoint_dir: "ham10000/checkpoints/baseline_image_only"
+
+logging:
+  experiment_name: baseline_image_only
+  save_dir: experiments/baseline_image_only
+  checkpoint_dir: ham10000/checkpoints/baseline_image_only

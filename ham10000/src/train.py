@@ -144,10 +144,12 @@ def main(config_path):
     # Create training log folder
     # --------------------------------------------------
 
+    experiment_name = os.path.splitext(os.path.basename(config_path))[0]
+
     save_dir = os.path.join(
         "ham10000",
         "experiments",
-        "baseline_image_only"
+        experiment_name
     )
 
     os.makedirs(save_dir, exist_ok=True)

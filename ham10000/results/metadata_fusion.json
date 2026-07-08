@@ -1,0 +1,18 @@
+{
+    "experiment": "metadata_fusion",
+    "checkpoint": "ham10000/checkpoints/metadata_fusion/best_model.pt",
+    "split": "test",
+    "epoch": 13,
+    "balanced_accuracy": 0.7168435268656913,
+    "macro_f1": 0.6702576685913259,
+    "macro_auc": 0.9549177653920948,
+    "per_class_f1": {
+        "akiec": 0.6824,
+        "bcc": 0.6916,
+        "bkl": 0.6531,
+        "df": 0.2857,
+        "mel": 0.5662,
+        "nv": 0.9038,
+        "vasc": 0.9091
+    }
+}

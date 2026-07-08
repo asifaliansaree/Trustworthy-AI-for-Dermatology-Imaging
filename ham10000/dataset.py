@@ -6,6 +6,9 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+# Import existing MetadataEncoder (do not redefine it here)
+from metadata_encoder import MetadataEncoder
+
 # Label mapping
 CLASS_MAP = {
     "akiec": 0,
@@ -57,17 +60,20 @@ class HAM10000Dataset(Dataset):
     ):
         """
         Args:
-            data_dir: path to data folder
-            split: 'train', 'val', or 'test'
-            transform: optional custom transform
+            data_dir (str): Path to HAM10000 data directory.
+            split (str): One of 'train', 'val', or 'test'.
+            transform: Optional torchvision transform.
+            metadata_encoder (MetadataEncoder, optional):
+                Existing MetadataEncoder instance. If provided,
+                __getitem__ returns (image, metadata, label).
+                Otherwise returns (image, label).
         """
 
-        assert split in ["train", "val", "test"]
+        assert split in ("train", "val", "test")
 
         self.data_dir = data_dir
         self.split = split
         self.metadata_encoder = metadata_encoder
-
 
         # Load split CSV
         csv_path = os.path.join(data_dir, "HAM10000_split.csv")
@@ -107,17 +113,22 @@ class HAM10000Dataset(Dataset):
     def __len__(self):
         return len(self.df)
 
+    def _find_image(self, image_id):
+        """Return full path to image."""
+        if image_id not in self.image_paths:
+            raise FileNotFoundError(f"Image '{image_id}' not found.")
+        return self.image_paths[image_id]
+
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
 
-        image_id = row["image_id"]
-        label = self.label_map[row["dx"]]
-
-        image_path = self.image_paths[image_id]
-
+        image_path = self._find_image(row["image_id"])
         image = Image.open(image_path).convert("RGB")
         image = self.transform(image)
 
+        label = self.label_map[row["dx"]]
+
+        # Return metadata if encoder is provided
         if self.metadata_encoder is not None:
             meta = self.metadata_encoder.encode(row)
             return image, meta, label

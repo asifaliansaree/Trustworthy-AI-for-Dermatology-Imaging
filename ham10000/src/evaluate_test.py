@@ -33,13 +33,9 @@ CLASSES = ['akiec', 'bcc', 'bkl', 'df', 'mel', 'nv', 'vasc']
 @torch.no_grad()
 def run_inference(model, loader, device, use_metadata):
     model.eval()
-
-    all_labels = []
-    all_preds = []
-    all_probs = []
+    all_labels, all_preds, all_probs = [], [], []
 
     for batch in loader:
-
         if use_metadata:
             images, meta, labels = batch
             meta = meta.to(device)
@@ -48,11 +44,9 @@ def run_inference(model, loader, device, use_metadata):
             meta = None
 
         images = images.to(device)
-
         logits = model(images, meta)
-
-        probs = torch.softmax(logits, dim=1)
-        preds = probs.argmax(dim=1)
+        probs  = torch.softmax(logits, dim=1)
+        preds  = probs.argmax(dim=1)
 
         all_labels.extend(labels.numpy())
         all_preds.extend(preds.cpu().numpy())
@@ -66,51 +60,60 @@ def run_inference(model, loader, device, use_metadata):
 
 
 def main():
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--config",
-        default="ham10000/configs/baseline.yaml"
+    parser = argparse.ArgumentParser(
+        description="Evaluate a DermaNet checkpoint on any split."
     )
-
-    parser.add_argument(
-        "--checkpoint",
-        default="ham10000/checkpoints/best_model.pt"
-    )
-
+    parser.add_argument("--config",
+                        default="ham10000/configs/baseline.yaml",
+                        help="YAML config used for this experiment")
+    parser.add_argument("--checkpoint",
+                        default="ham10000/checkpoints/baseline_image_only/best_model.pt",
+                        help="Path to the .pt checkpoint to evaluate")
+    parser.add_argument("--split",
+                        default="test",
+                        choices=["train", "val", "test"],
+                        help="Which dataset split to evaluate on")
+    parser.add_argument("--out",
+                        default=None,
+                        help="Override output JSON path (auto-inferred if omitted)")
     args = parser.parse_args()
 
+    # ── Load config ───────────────────────────────────────────
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    device       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_metadata = cfg["model"]["metadata_dim"] > 0
+    experiment   = cfg["logging"]["experiment_name"]   # e.g. "baseline_image_only"
 
+    print(f"\nExperiment  : {experiment}")
+    print(f"Checkpoint  : {args.checkpoint}")
+    print(f"Split       : {args.split}")
+    print(f"Metadata    : {use_metadata}")
+    print(f"Device      : {device}\n")
+
+    # ── Encoder ───────────────────────────────────────────────
     encoder = None
-
     if use_metadata:
         encoder = MetadataEncoder(
-            os.path.join(
-                cfg["data"]["data_dir"],
-                "HAM10000_split.csv"
-            )
+            os.path.join(cfg["data"]["data_dir"], "HAM10000_split.csv")
         )
 
-    test_dataset = HAM10000Dataset(
+    # ── DataLoader ────────────────────────────────────────────
+    ds = HAM10000Dataset(
         data_dir=cfg["data"]["data_dir"],
-        split="test",
+        split=args.split,
         metadata_encoder=encoder,
     )
-
-    test_loader = DataLoader(
-        test_dataset,
+    loader = DataLoader(
+        ds,
         batch_size=cfg["train"]["batch_size"],
         shuffle=False,
-        num_workers=cfg["data"]["num_workers"],
+        num_workers=cfg["data"].get("num_workers", 0),
     )
+    print(f"Loaded {len(ds)} images for split='{args.split}'")
 
+    # ── Model ─────────────────────────────────────────────────
     model = DermaNet(
         num_classes=cfg["model"]["num_classes"],
         metadata_dim=cfg["model"]["metadata_dim"],
@@ -118,109 +121,83 @@ def main():
         dropout=cfg["model"]["dropout"],
     ).to(device)
 
-    checkpoint = torch.load(
-        args.checkpoint,
-        map_location=device,
-    )
+    ckpt = torch.load(args.checkpoint, map_location=device)
+    model.load_state_dict(ckpt["model_state_dict"])
+    print(f"Checkpoint loaded  (epoch {ckpt['epoch']}, "
+          f"val_bal_acc={ckpt['val_balanced_accuracy']:.4f})\n")
 
-    model.load_state_dict(checkpoint["model_state_dict"])
+    # ── Inference ─────────────────────────────────────────────
+    print("Running inference...")
+    y_true, y_pred, y_probs = run_inference(model, loader, device, use_metadata)
 
-    print("\nRunning inference...\n")
-
-    y_true, y_pred, y_probs = run_inference(
-        model,
-        test_loader,
-        device,
-        use_metadata,
-    )
-
-    bal_acc = balanced_accuracy_score(y_true, y_pred)
-
-    macro_f1 = f1_score(
-        y_true,
-        y_pred,
-        average="macro",
-        zero_division=0,
-    )
-
-    per_class_f1 = f1_score(
-        y_true,
-        y_pred,
-        average=None,
-        zero_division=0,
-    )
-
-    cm = confusion_matrix(
-        y_true,
-        y_pred,
-    )
-
-    report = classification_report(
-        y_true,
-        y_pred,
-        target_names=CLASSES,
-        digits=4,
-        zero_division=0,
-    )
-
+    # ── Metrics ───────────────────────────────────────────────
+    bal_acc      = balanced_accuracy_score(y_true, y_pred)
+    macro_f1     = f1_score(y_true, y_pred, average="macro",  zero_division=0)
+    per_class_f1 = f1_score(y_true, y_pred, average=None,     zero_division=0)
+    cm           = confusion_matrix(y_true, y_pred)
+    report       = classification_report(
+                       y_true, y_pred,
+                       target_names=CLASSES,
+                       digits=4, zero_division=0)
     try:
-        auc = roc_auc_score(
-            y_true,
-            y_probs,
-            multi_class="ovr",
-            average="macro",
-        )
-    except Exception:
+        auc = roc_auc_score(y_true, y_probs,
+                            multi_class="ovr", average="macro")
+    except Exception as e:
         auc = float("nan")
+        print(f"  AUC warning: {e}")
 
+    # ── Print ─────────────────────────────────────────────────
+    print("\n" + "=" * 60)
+    print(f"RESULTS  —  {experiment}  —  split={args.split}")
     print("=" * 60)
-    print("TEST RESULTS")
-    print("=" * 60)
-
     print(f"Balanced Accuracy : {bal_acc:.4f}")
     print(f"Macro F1          : {macro_f1:.4f}")
     print(f"Macro ROC-AUC     : {auc:.4f}")
-
-    print("\nPer-class F1")
-
+    print("\nPer-class F1:")
     for c, s in zip(CLASSES, per_class_f1):
-        print(f"{c:6s}: {s:.4f}")
-
-    print("\nConfusion Matrix")
-
+        bar = "█" * int(s * 20)
+        print(f"  {c:6s}: {s:.4f}  {bar}")
+    print("\nConfusion Matrix:")
     print(cm)
-
-    print("\nClassification Report\n")
-
+    print("\nClassification Report:")
     print(report)
 
+    # ── Save ─────────────────────────────────────────────────
     os.makedirs("ham10000/results", exist_ok=True)
 
-    with open(
-        "ham10000/results/classification_report.txt",
-        "w",
-    ) as f:
-        f.write(report)
+    # Auto-infer output JSON name from experiment name
+    if args.out:
+        json_path   = args.out
+        report_path = args.out.replace(".json", "_report.txt")
+    else:
+        json_path   = f"ham10000/results/{experiment}.json"
+        report_path = f"ham10000/results/{experiment}_report.txt"
 
     results = {
+        "experiment":      experiment,
+        "checkpoint":      args.checkpoint,
+        "split":           args.split,
+        "epoch":           int(ckpt["epoch"]),
         "balanced_accuracy": float(bal_acc),
-        "macro_f1": float(macro_f1),
-        "macro_auc": float(auc),
+        "macro_f1":          float(macro_f1),
+        "macro_auc":         float(auc),
         "per_class_f1": {
-            c: float(s)
+            c: round(float(s), 4)
             for c, s in zip(CLASSES, per_class_f1)
         },
     }
 
-    with open(
-        "ham10000/results/baseline_image_only.json",
-        "w",
-    ) as f:
+    with open(json_path, "w") as f:
         json.dump(results, f, indent=4)
 
-    print("\nSaved:")
-    print("ham10000/results/classification_report.txt")
-    print("ham10000/results/baseline_image_only.json")
+    with open(report_path, "w") as f:
+        f.write(f"Experiment : {experiment}\n")
+        f.write(f"Checkpoint : {args.checkpoint}\n")
+        f.write(f"Split      : {args.split}\n\n")
+        f.write(report)
+
+    print(f"\nSaved results → {json_path}")
+    print(f"Saved report  → {report_path}")
 
 
 if __name__ == "__main__":

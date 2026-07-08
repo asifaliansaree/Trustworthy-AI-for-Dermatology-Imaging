@@ -1,23 +1,25 @@
+seed: 42
+
 data:
   data_dir: "ham10000/data"
   num_workers: 2
 
 model:
   num_classes: 7
-  metadata_dim: 0        
+  metadata_dim: 18
   pretrained: true
   dropout: 0.3
-  metadata_dim: 18       
 
 train:
   epochs: 20
   batch_size: 32
-  learning_rate: 0.0001
+  lr: 0.0001
   weight_decay: 0.00001
-  seed: 42
 
 output:
-  checkpoint_dir: "checkpoints"
+  checkpoint_dir: "ham10000/checkpoints/metadata_fusion"
 
 logging:
+  experiment_name: metadata_fusion
   save_dir: experiments/metadata_fusion
+  checkpoint_dir: ham10000/checkpoints/metadata_fusion
