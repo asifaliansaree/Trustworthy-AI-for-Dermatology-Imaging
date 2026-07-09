@@ -1,4 +1,4 @@
-import os, sys
+import os, sys , json
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -172,3 +172,34 @@ if len(high_conf_wrong) > 0:
     plt.close()
     print(f"Saved → {path}")
     print("\nThese are your Week 8 XAI audit targets.")
+
+    # ── Save XAI target cases for Week 4 ──────────────────────────
+import json
+
+xai_targets = []
+for idx in high_conf_wrong:
+    row = test_df.iloc[idx]
+    xai_targets.append({
+        'image_id': row['image_id'],
+        'true_label': CLASSES[all_labels[idx]],
+        'pred_label': CLASSES[all_preds[idx]],
+        'confidence': float(all_probs[idx, all_preds[idx]])
+    })
+
+# Also include the top mel→nv failures even if below the confidence
+# threshold, since that's your dominant clinical error mode
+for idx in mel_idx[:n_show]:
+    entry = {
+        'image_id': test_df.iloc[idx]['image_id'],
+        'true_label': 'mel',
+        'pred_label': 'nv',
+        'confidence': float(all_probs[idx, CLASSES.index('nv')])
+    }
+    if entry not in xai_targets:
+        xai_targets.append(entry)
+
+xai_path = 'ham10000/results/xai_target_cases.json'
+with open(xai_path, 'w') as f:
+    json.dump(xai_targets, f, indent=2)
+
+print(f"\nSaved {len(xai_targets)} XAI target cases → {xai_path}")

@@ -1,0 +1,554 @@
+[
+  {
+    "image_id": "ISIC_0027957",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8288454413414001
+  },
+  {
+    "image_id": "ISIC_0031212",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8780243992805481
+  },
+  {
+    "image_id": "ISIC_0025157",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.8016250133514404
+  },
+  {
+    "image_id": "ISIC_0029600",
+    "true_label": "bkl",
+    "pred_label": "nv",
+    "confidence": 0.969563364982605
+  },
+  {
+    "image_id": "ISIC_0024672",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8803356289863586
+  },
+  {
+    "image_id": "ISIC_0027367",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.9147873520851135
+  },
+  {
+    "image_id": "ISIC_0024748",
+    "true_label": "bkl",
+    "pred_label": "nv",
+    "confidence": 0.8036936521530151
+  },
+  {
+    "image_id": "ISIC_0030522",
+    "true_label": "bkl",
+    "pred_label": "nv",
+    "confidence": 0.8555437922477722
+  },
+  {
+    "image_id": "ISIC_0029789",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8840370178222656
+  },
+  {
+    "image_id": "ISIC_0028881",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8428440690040588
+  },
+  {
+    "image_id": "ISIC_0026316",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8319493532180786
+  },
+  {
+    "image_id": "ISIC_0024696",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8740969300270081
+  },
+  {
+    "image_id": "ISIC_0031352",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.8537939190864563
+  },
+  {
+    "image_id": "ISIC_0029032",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.8042312264442444
+  },
+  {
+    "image_id": "ISIC_0026871",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.8197956085205078
+  },
+  {
+    "image_id": "ISIC_0027859",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.9970715045928955
+  },
+  {
+    "image_id": "ISIC_0029115",
+    "true_label": "bkl",
+    "pred_label": "bcc",
+    "confidence": 0.9818015694618225
+  },
+  {
+    "image_id": "ISIC_0031000",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.8660668134689331
+  },
+  {
+    "image_id": "ISIC_0034197",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.9732234477996826
+  },
+  {
+    "image_id": "ISIC_0034057",
+    "true_label": "bkl",
+    "pred_label": "akiec",
+    "confidence": 0.8651085495948792
+  },
+  {
+    "image_id": "ISIC_0033156",
+    "true_label": "bkl",
+    "pred_label": "mel",
+    "confidence": 0.9009886384010315
+  },
+  {
+    "image_id": "ISIC_0026941",
+    "true_label": "bkl",
+    "pred_label": "nv",
+    "confidence": 0.9170833230018616
+  },
+  {
+    "image_id": "ISIC_0028797",
+    "true_label": "bkl",
+    "pred_label": "nv",
+    "confidence": 0.9486735463142395
+  },
+  {
+    "image_id": "ISIC_0029891",
+    "true_label": "df",
+    "pred_label": "bcc",
+    "confidence": 0.9481315612792969
+  },
+  {
+    "image_id": "ISIC_0025450",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.9643245339393616
+  },
+  {
+    "image_id": "ISIC_0024586",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8216291069984436
+  },
+  {
+    "image_id": "ISIC_0025783",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.9798658490180969
+  },
+  {
+    "image_id": "ISIC_0029726",
+    "true_label": "mel",
+    "pred_label": "akiec",
+    "confidence": 0.8985120058059692
+  },
+  {
+    "image_id": "ISIC_0033074",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.9865280985832214
+  },
+  {
+    "image_id": "ISIC_0034087",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.9855716228485107
+  },
+  {
+    "image_id": "ISIC_0032722",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.9729775786399841
+  },
+  {
+    "image_id": "ISIC_0034064",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8782469034194946
+  },
+  {
+    "image_id": "ISIC_0032603",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8889260292053223
+  },
+  {
+    "image_id": "ISIC_0032081",
+    "true_label": "mel",
+    "pred_label": "akiec",
+    "confidence": 0.8793956637382507
+  },
+  {
+    "image_id": "ISIC_0032845",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.841855525970459
+  },
+  {
+    "image_id": "ISIC_0033812",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8462242484092712
+  },
+  {
+    "image_id": "ISIC_0034317",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8404973149299622
+  },
+  {
+    "image_id": "ISIC_0028760",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.9963356256484985
+  },
+  {
+    "image_id": "ISIC_0030192",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.801626443862915
+  },
+  {
+    "image_id": "ISIC_0025651",
+    "true_label": "mel",
+    "pred_label": "akiec",
+    "confidence": 0.9547151923179626
+  },
+  {
+    "image_id": "ISIC_0028017",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8295108079910278
+  },
+  {
+    "image_id": "ISIC_0030784",
+    "true_label": "mel",
+    "pred_label": "akiec",
+    "confidence": 0.8572109341621399
+  },
+  {
+    "image_id": "ISIC_0031931",
+    "true_label": "mel",
+    "pred_label": "akiec",
+    "confidence": 0.9352015256881714
+  },
+  {
+    "image_id": "ISIC_0025691",
+    "true_label": "bcc",
+    "pred_label": "nv",
+    "confidence": 0.8727611899375916
+  },
+  {
+    "image_id": "ISIC_0031450",
+    "true_label": "bcc",
+    "pred_label": "bkl",
+    "confidence": 0.8728005290031433
+  },
+  {
+    "image_id": "ISIC_0029820",
+    "true_label": "bcc",
+    "pred_label": "akiec",
+    "confidence": 0.8769910335540771
+  },
+  {
+    "image_id": "ISIC_0031833",
+    "true_label": "nv",
+    "pred_label": "vasc",
+    "confidence": 0.973818302154541
+  },
+  {
+    "image_id": "ISIC_0031404",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.99941086769104
+  },
+  {
+    "image_id": "ISIC_0026569",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.9985252022743225
+  },
+  {
+    "image_id": "ISIC_0029719",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8722232580184937
+  },
+  {
+    "image_id": "ISIC_0027684",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.9140137434005737
+  },
+  {
+    "image_id": "ISIC_0030312",
+    "true_label": "nv",
+    "pred_label": "df",
+    "confidence": 0.9887645244598389
+  },
+  {
+    "image_id": "ISIC_0027244",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.9210142493247986
+  },
+  {
+    "image_id": "ISIC_0026869",
+    "true_label": "nv",
+    "pred_label": "vasc",
+    "confidence": 0.9112210273742676
+  },
+  {
+    "image_id": "ISIC_0030303",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.9696502089500427
+  },
+  {
+    "image_id": "ISIC_0033852",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8077394962310791
+  },
+  {
+    "image_id": "ISIC_0033561",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.9107469916343689
+  },
+  {
+    "image_id": "ISIC_0025778",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.8757818341255188
+  },
+  {
+    "image_id": "ISIC_0033503",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8464187979698181
+  },
+  {
+    "image_id": "ISIC_0033795",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8301382660865784
+  },
+  {
+    "image_id": "ISIC_0033832",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8055349588394165
+  },
+  {
+    "image_id": "ISIC_0032683",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8385905027389526
+  },
+  {
+    "image_id": "ISIC_0033373",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.9010310173034668
+  },
+  {
+    "image_id": "ISIC_0032822",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.9005918502807617
+  },
+  {
+    "image_id": "ISIC_0033359",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8631227612495422
+  },
+  {
+    "image_id": "ISIC_0033213",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.9221786260604858
+  },
+  {
+    "image_id": "ISIC_0034237",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8770501017570496
+  },
+  {
+    "image_id": "ISIC_0034032",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8982625603675842
+  },
+  {
+    "image_id": "ISIC_0026913",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8629258871078491
+  },
+  {
+    "image_id": "ISIC_0031603",
+    "true_label": "nv",
+    "pred_label": "akiec",
+    "confidence": 0.8665305972099304
+  },
+  {
+    "image_id": "ISIC_0026226",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.8196480870246887
+  },
+  {
+    "image_id": "ISIC_0028174",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.8477234840393066
+  },
+  {
+    "image_id": "ISIC_0024566",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.9207145571708679
+  },
+  {
+    "image_id": "ISIC_0025112",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.82981276512146
+  },
+  {
+    "image_id": "ISIC_0028400",
+    "true_label": "nv",
+    "pred_label": "bcc",
+    "confidence": 0.8134608268737793
+  },
+  {
+    "image_id": "ISIC_0026406",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.8611677885055542
+  },
+  {
+    "image_id": "ISIC_0031594",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.9010865688323975
+  },
+  {
+    "image_id": "ISIC_0030580",
+    "true_label": "nv",
+    "pred_label": "akiec",
+    "confidence": 0.8330009579658508
+  },
+  {
+    "image_id": "ISIC_0026577",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.8839113116264343
+  },
+  {
+    "image_id": "ISIC_0026554",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.8151124715805054
+  },
+  {
+    "image_id": "ISIC_0031064",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.816037118434906
+  },
+  {
+    "image_id": "ISIC_0027538",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8106170892715454
+  },
+  {
+    "image_id": "ISIC_0026751",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8529304265975952
+  },
+  {
+    "image_id": "ISIC_0031071",
+    "true_label": "nv",
+    "pred_label": "bkl",
+    "confidence": 0.8821534514427185
+  },
+  {
+    "image_id": "ISIC_0031127",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8505977988243103
+  },
+  {
+    "image_id": "ISIC_0027558",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.9443185329437256
+  },
+  {
+    "image_id": "ISIC_0032580",
+    "true_label": "nv",
+    "pred_label": "mel",
+    "confidence": 0.8704103231430054
+  },
+  {
+    "image_id": "ISIC_0031040",
+    "true_label": "akiec",
+    "pred_label": "bcc",
+    "confidence": 0.8977957963943481
+  },
+  {
+    "image_id": "ISIC_0029059",
+    "true_label": "akiec",
+    "pred_label": "bcc",
+    "confidence": 0.997136116027832
+  },
+  {
+    "image_id": "ISIC_0025471",
+    "true_label": "akiec",
+    "pred_label": "bcc",
+    "confidence": 0.9452614188194275
+  },
+  {
+    "image_id": "ISIC_0032214",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.4900926351547241
+  },
+  {
+    "image_id": "ISIC_0024911",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.47567301988601685
+  }
+]
