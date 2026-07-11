@@ -4,3 +4,19 @@ __pycache__/
 cifar10/data/
 ham10000/data/
 trustworthy AI for Dermatology Imaging/
+# Large data files — never commit these
+*.zip
+*.tar.gz
+*.gz
+
+# Model checkpoints — too large for GitHub
+*.pt
+*.pth
+*.ckpt
+
+# Dataset images
+ham10000/data/HAM10000_images_part_1/
+ham10000/data/HAM10000_images_part_2/
+
+# Jupyter notebook outputs (large)
+# Keep .ipynb files but ignore their outputs via nbstripout
