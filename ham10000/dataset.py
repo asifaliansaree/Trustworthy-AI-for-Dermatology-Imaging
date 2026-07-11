@@ -1,134 +1,117 @@
+"""
+HAM10000Dataset — configurable augmentation, split-aware loading,
+optional metadata encoder support.
+"""
 import os
 import pandas as pd
 from PIL import Image
-
 import torch
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+import torchvision.transforms as T
+from typing import Optional
 
-# Import existing MetadataEncoder (do not redefine it here)
-from metadata_encoder import MetadataEncoder
-
-# Label mapping
 CLASS_MAP = {
-    "akiec": 0,
-    "bcc": 1,
-    "bkl": 2,
-    "df": 3,
-    "mel": 4,
-    "nv": 5,
-    "vasc": 6,
+    "mel": 0, "nv": 1, "bcc": 2,
+    "akiec": 3, "bkl": 4, "df": 5, "vasc": 6,
 }
 
-# ImageNet normalization (recommended for pretrained models)
-MEAN = [0.485, 0.456, 0.406]
-STD = [0.229, 0.224, 0.225]
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD  = [0.229, 0.224, 0.225]
 
 
-def get_transform(split):
-    """Return transforms for each dataset split."""
-    if split == "train":
-        return transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.RandomCrop(224),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.ColorJitter(
-                brightness=0.2,
-                contrast=0.2,
-                saturation=0.2,
-            ),
-            transforms.RandomRotation(90),
-            transforms.ToTensor(),
-            transforms.Normalize(MEAN, STD),
+def get_transform(split: str, img_size: int = 224,
+                  augment: bool = True) -> T.Compose:
+    """
+    Returns the appropriate transform pipeline.
+
+    Train: strong augmentation (only if augment=True)
+    Val / Test: deterministic resize + center crop + normalize
+    """
+    if split == "train" and augment:
+        return T.Compose([
+            T.RandomResizedCrop(img_size, scale=(0.7, 1.0),
+                                ratio=(0.9, 1.1)),
+            T.RandomHorizontalFlip(p=0.5),
+            T.RandomVerticalFlip(p=0.5),
+            T.RandomRotation(degrees=90),
+            T.RandomAffine(degrees=0, shear=10),
+            T.RandomPerspective(distortion_scale=0.2, p=0.3),
+            T.ColorJitter(brightness=0.3, contrast=0.3,
+                          saturation=0.2, hue=0.05),
+            T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.5)),
+            T.RandomGrayscale(p=0.05),
+            T.ToTensor(),
+            T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+            T.RandomErasing(p=0.2, scale=(0.02, 0.1)),
         ])
     else:
-        return transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(MEAN, STD),
+        return T.Compose([
+            T.Resize(int(img_size * 1.14)),
+            T.CenterCrop(img_size),
+            T.ToTensor(),
+            T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
         ])
 
 
 class HAM10000Dataset(Dataset):
+    """
+    HAM10000 dataset loader.
+
+    Args:
+        data_dir:         path to ham10000/data/ (contains split CSV + images)
+        split:            'train', 'val', or 'test'
+        metadata_encoder: optional MetadataEncoder instance
+        img_size:         image size (default 224)
+        augment:          enable training augmentation (default True)
+    """
+
     def __init__(
         self,
-        data_dir="ham10000/data",
-        split="train",
-        transform=None,
-        metadata_encoder=None,
+        data_dir:         str,
+        split:            str,
+        metadata_encoder  = None,
+        img_size:         int  = 224,
+        augment:          bool = True,
     ):
-        """
-        Args:
-            data_dir (str): Path to HAM10000 data directory.
-            split (str): One of 'train', 'val', or 'test'.
-            transform: Optional torchvision transform.
-            metadata_encoder (MetadataEncoder, optional):
-                Existing MetadataEncoder instance. If provided,
-                __getitem__ returns (image, metadata, label).
-                Otherwise returns (image, label).
-        """
+        assert split in ("train", "val", "test"), \
+            f"split must be train/val/test, got '{split}'"
 
-        assert split in ("train", "val", "test")
-
-        self.data_dir = data_dir
-        self.split = split
-        self.metadata_encoder = metadata_encoder
-
-        # Load split CSV
         csv_path = os.path.join(data_dir, "HAM10000_split.csv")
-        df = pd.read_csv(csv_path)
+        df       = pd.read_csv(csv_path)
 
-        # Keep only requested split
-        self.df = df[df["split"] == split].reset_index(drop=True)
+        self.df               = df[df["split"] == split].reset_index(drop=True)
+        self.data_dir         = data_dir
+        self.split            = split
+        self.metadata_encoder = metadata_encoder
+        self.transform        = get_transform(split, img_size, augment)
 
-        self.label_map = CLASS_MAP
-
-        # Image folders
-        self.image_dirs = [
+        self._img_dirs = [
             os.path.join(data_dir, "HAM10000_images_part_1"),
             os.path.join(data_dir, "HAM10000_images_part_2"),
         ]
 
-        # Build image path dictionary
-        self.image_paths = {}
+        mode = "train" if split == "train" and augment else split
+        meta = " + metadata" if metadata_encoder else ""
+        print(f"[{split}] {len(self.df)} images{meta} | mode={mode}")
 
-        for folder in self.image_dirs:
-            for file in os.listdir(folder):
-                if file.endswith(".jpg"):
-                    image_id = file[:-4]
-                    self.image_paths[image_id] = os.path.join(folder, file)
-
-        # Use custom transform if provided
-        if transform is None:
-            self.transform = get_transform(split)
-        else:
-            self.transform = transform
-
-        print(
-            f"[{split}] Loaded {len(self.df)} images "
-            f"across {self.df['dx'].nunique()} classes."
-        )
-
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.df)
 
-    def _find_image(self, image_id):
-        """Return full path to image."""
-        if image_id not in self.image_paths:
-            raise FileNotFoundError(f"Image '{image_id}' not found.")
-        return self.image_paths[image_id]
+    def _find_image(self, image_id: str) -> str:
+        for d in self._img_dirs:
+            p = os.path.join(d, image_id + ".jpg")
+            if os.path.exists(p):
+                return p
+        raise FileNotFoundError(
+            f"Image '{image_id}' not found in either image directory."
+        )
 
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-
-        image_path = self._find_image(row["image_id"])
-        image = Image.open(image_path).convert("RGB")
+    def __getitem__(self, idx: int):
+        row   = self.df.iloc[idx]
+        image = Image.open(self._find_image(row["image_id"])).convert("RGB")
         image = self.transform(image)
+        label = CLASS_MAP[row["dx"]]
 
-        label = self.label_map[row["dx"]]
-
-        # Return metadata if encoder is provided
         if self.metadata_encoder is not None:
             meta = self.metadata_encoder.encode(row)
             return image, meta, label

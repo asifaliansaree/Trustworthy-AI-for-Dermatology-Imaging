@@ -1,0 +1,39 @@
+seed: 42
+
+data:
+  data_dir: "ham10000/data"
+  num_workers: 2
+  img_size: 224
+  augment: true
+
+model:
+  architecture: efficientnet_b0
+  num_classes: 7
+  metadata_dim: 0
+  pretrained: true
+  dropout: 0.4
+  freeze_epochs: 3          # freeze backbone for first 3 epochs
+
+train:
+  epochs: 25
+  batch_size: 32
+  lr: 0.00005               # 5e-5 — lower than ResNet because EfficientNet is sensitive
+  weight_decay: 0.0001
+  scheduler: cosine         # cosine | onecycle | plateau
+  gradient_accumulation: 1
+  max_grad_norm: 1.0
+  use_ema: true
+  ema_decay: 0.9999
+  early_stopping_patience: 7
+
+loss:
+  name: label_smoothing     # cross_entropy | label_smoothing | focal | weighted_focal
+  label_smoothing: 0.1
+
+output:
+  checkpoint_dir: "ham10000/checkpoints/efficientnet_b0"
+
+logging:
+  experiment_name: efficientnet_b0
+  save_dir: experiments/efficientnet_b0
+  checkpoint_dir: ham10000/checkpoints/efficientnet_b0

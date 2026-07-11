@@ -1,0 +1,39 @@
+seed: 42
+
+data:
+  data_dir: "ham10000/data"
+  num_workers: 2
+  img_size: 240             # B1 native resolution
+  augment: true
+
+model:
+  architecture: efficientnet_b1
+  num_classes: 7
+  metadata_dim: 0
+  pretrained: true
+  dropout: 0.4
+  freeze_epochs: 3
+
+train:
+  epochs: 25
+  batch_size: 24            # slightly smaller batch due to larger input
+  lr: 0.00005
+  weight_decay: 0.0001
+  scheduler: cosine
+  gradient_accumulation: 1
+  max_grad_norm: 1.0
+  use_ema: true
+  ema_decay: 0.9999
+  early_stopping_patience: 7
+
+loss:
+  name: label_smoothing
+  label_smoothing: 0.1
+
+output:
+  checkpoint_dir: "ham10000/checkpoints/efficientnet_b1"
+
+logging:
+  experiment_name: efficientnet_b1
+  save_dir: experiments/efficientnet_b1
+  checkpoint_dir: ham10000/checkpoints/efficientnet_b1
