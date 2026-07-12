@@ -1,0 +1,38 @@
+seed: 42
+
+data:
+  data_dir: "ham10000/data"
+  num_workers: 2
+  img_size: 224
+  augment: true
+
+model:
+  architecture: resnet18
+  num_classes: 7
+  metadata_dim: 0
+  pretrained: true
+  dropout: 0.4
+  freeze_epochs: 0
+
+train:
+  epochs: 30
+  batch_size: 32
+  lr: 0.00005           # halved from 1e-4
+  weight_decay: 0.0005  # increased from 1e-4
+  scheduler: cosine
+  gradient_accumulation: 1
+  max_grad_norm: 1.0
+  use_ema: false
+  early_stopping_patience: 30
+
+loss:
+  name: label_smoothing
+  label_smoothing: 0.1
+
+output:
+  checkpoint_dir: "ham10000/checkpoints/resnet18_tuned"
+
+logging:
+  experiment_name: resnet18_tuned
+  save_dir: experiments/resnet18_tuned
+  checkpoint_dir: ham10000/checkpoints/resnet18_tuned
