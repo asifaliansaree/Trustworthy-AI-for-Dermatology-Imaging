@@ -1,0 +1,8 @@
+experiment,week,architecture,optimizer,lr,weight_decay,loss,label_smoothing,dropout,epochs,best_val_epoch,best_val_bal_acc,test_bal_acc,test_macro_f1,test_macro_auc,notes
+baseline_image_only,3,ResNet-18,AdamW,0.0001,0.0001,cross_entropy,0.0,0.3,20,15,0.7964,0.7318,0.6869,0.9478,Original baseline — best model overall
+metadata_fusion,3,ResNet-18 + metadata,AdamW,0.0001,0.0001,cross_entropy,0.0,0.3,20,13,0.7825,0.7168,0.6703,0.9549,Late fusion 18-dim metadata vector
+efficientnet_b0_v2,3,EfficientNet-B0,AdamW,0.0001,0.0001,label_smoothing,0.1,0.4,25,18,0.663,,,,Underfitting — val_loss never below 1.03
+efficientnet_b0_v3,3,EfficientNet-B0,AdamW,0.0002,0.0001,cross_entropy,0.0,0.3,30,18,0.7165,,,,Overfitting — train_loss 0.06 vs val_loss 0.74
+resnet18_tuned,3,ResNet-18,AdamW,5e-05,0.0005,label_smoothing,0.1,0.4,30,18,0.6584,,,,Supervisor feedback: lower LR + stronger L2. Worse than baseline.
+efficientnet_b0_tuned,3,EfficientNet-B0,AdamW,5e-05,0.0005,label_smoothing,0.1,0.4,30,22,0.6481,,,,Supervisor feedback: lower LR. Worse than ENv3.
+efficientnet_b0_v3_tuned,3,EfficientNet-B0,AdamW,3e-05,0.001,label_smoothing,0.15,0.5,30,18,0.617,,,,Supervisor feedback: lr=3e-5 + wd=1e-3. Underfitting.
