@@ -291,6 +291,9 @@ def main(config_path: str):
 
         # Validate (use EMA weights if enabled)
         if ema:
+            # Save the live (currently-training) weights before overwriting
+            # the model with the EMA shadow for evaluation.
+            live_state = {k: v.clone() for k, v in model.state_dict().items()}
             ema.apply_to(model)
 
         val_loss = run_epoch(
@@ -304,10 +307,12 @@ def main(config_path: str):
         metrics = evaluate.compute_metrics(y_true, y_pred, y_probs)
         val_bal_acc = metrics["balanced_accuracy"]
 
-        # Restore live weights after EMA eval
-        if ema and epoch < epochs:
-            for s, m in zip(ema.shadow.parameters(), model.parameters()):
-                m.data.copy_(s.data)
+        # Restore the live weights after EMA eval so training resumes
+        # from where it left off (previously this just re-copied the
+        # EMA shadow onto the model again, silently discarding all
+        # live training progress after the first eval).
+        if ema:
+            model.load_state_dict(live_state)
 
         # Scheduler step
         if sched_name == "plateau":

@@ -29,20 +29,15 @@ def get_transform(split: str, img_size: int = 224,
     """
     if split == "train" and augment:
         return T.Compose([
-            T.RandomResizedCrop(img_size, scale=(0.7, 1.0),
-                                ratio=(0.9, 1.1)),
+            T.Resize((256, 256)),
+            T.RandomCrop(img_size),
             T.RandomHorizontalFlip(p=0.5),
             T.RandomVerticalFlip(p=0.5),
-            T.RandomRotation(degrees=90),
-            T.RandomAffine(degrees=0, shear=10),
-            T.RandomPerspective(distortion_scale=0.2, p=0.3),
-            T.ColorJitter(brightness=0.3, contrast=0.3,
+            T.ColorJitter(brightness=0.2, contrast=0.2,
                           saturation=0.2, hue=0.05),
-            T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.5)),
-            T.RandomGrayscale(p=0.05),
+            T.RandomRotation(degrees=90),
             T.ToTensor(),
             T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-            T.RandomErasing(p=0.2, scale=(0.02, 0.1)),
         ])
     else:
         return T.Compose([
