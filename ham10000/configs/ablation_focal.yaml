@@ -11,6 +11,7 @@ model:
   dropout: 0.3
   metadata_dim: 0 
 train:
+  batch_size: 32
   lr: MEASURED_LR
   scheduler: onecycle
   epochs: 20
