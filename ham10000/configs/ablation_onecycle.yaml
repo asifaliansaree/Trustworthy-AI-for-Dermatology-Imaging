@@ -1,0 +1,19 @@
+seed: 42
+
+data:
+  data_dir: "ham10000/data"
+  num_workers: 2
+
+model:
+  num_classes: 7
+  metadata_dim: 0        
+  pretrained: true
+  dropout: 0.3
+  metadata_dim: 0 
+
+train:
+  lr: MEASURED_LR    
+  scheduler: onecycle
+  epochs: 20
+loss:
+  name: cross_entropy

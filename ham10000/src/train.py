@@ -12,12 +12,14 @@ Features:
   - Early stopping
   - CSV training log
   - Best + last checkpoint saving
+  - Optional WeightedRandomSampler for class-imbalance handling
 """
 import os, sys, csv, json, random, time, argparse
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 import yaml
 from copy import deepcopy
 
@@ -72,6 +74,11 @@ class EMA:
 
 
 # ── Data loaders ──────────────────────────────────────────────
+# Maps the HAM10000 diagnosis codes to the same class indices used
+# elsewhere in the pipeline (dataset.py / class_weights.npy ordering).
+CLASS_MAP = {"mel": 0, "nv": 1, "bcc": 2, "akiec": 3, "bkl": 4, "df": 5, "vasc": 6}
+
+
 def build_loaders(cfg: dict, encoder=None) -> dict:
     data_dir = cfg["data"]["data_dir"]
     bs       = cfg["train"]["batch_size"]
@@ -79,23 +86,65 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
     img_size = cfg["data"].get("img_size", 224)
     augment  = cfg["data"].get("augment", True)
 
-    loaders = {}
+    datasets = {}
     for split in ["train", "val", "test"]:
-        ds = HAM10000Dataset(
+        datasets[split] = HAM10000Dataset(
             data_dir=data_dir,
             split=split,
             metadata_encoder=encoder,
             img_size=img_size,
-            augment=augment,
+            # Never augment val/test — only the training split gets it.
+            augment=(augment if split == "train" else False),
         )
-        loaders[split] = DataLoader(
-            ds,
+
+    # WeightedRandomSampler — rebalances batches by class frequency.
+    # This is a separate on/off switch (cfg["train"]["use_weighted_sampler"])
+    # so it can be ablated independently of Focal Loss, per the requested
+    # experiment plan (sampler vs. focal, not combined).
+    use_sampler = cfg["train"].get("use_weighted_sampler", False)
+    if use_sampler:
+        split_csv = os.path.join(data_dir, "HAM10000_split.csv")
+        df        = pd.read_csv(split_csv)
+        train_df  = df[df["split"] == "train"]
+
+        labels       = train_df["dx"].map(CLASS_MAP).values
+        class_counts = np.bincount(labels, minlength=len(CLASS_MAP))
+        sample_weights = 1.0 / class_counts[labels]
+
+        sampler = WeightedRandomSampler(
+            weights=sample_weights,
+            num_samples=len(sample_weights),
+            replacement=True,
+        )
+        train_loader = DataLoader(
+            datasets["train"],
             batch_size=bs,
-            shuffle=(split == "train"),
+            sampler=sampler,
             num_workers=nw,
             pin_memory=torch.cuda.is_available(),
         )
-    return loaders
+        print("WeightedRandomSampler enabled "
+              f"(class counts: {class_counts.tolist()})")
+    else:
+        train_loader = DataLoader(
+            datasets["train"],
+            batch_size=bs,
+            shuffle=True,
+            num_workers=nw,
+            pin_memory=torch.cuda.is_available(),
+        )
+
+    return {
+        "train": train_loader,
+        "val": DataLoader(
+            datasets["val"], batch_size=bs, shuffle=False,
+            num_workers=nw, pin_memory=torch.cuda.is_available(),
+        ),
+        "test": DataLoader(
+            datasets["test"], batch_size=bs, shuffle=False,
+            num_workers=nw, pin_memory=torch.cuda.is_available(),
+        ),
+    }
 
 
 # ── Optimizer + scheduler ─────────────────────────────────────
