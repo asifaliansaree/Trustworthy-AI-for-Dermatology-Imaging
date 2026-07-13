@@ -6,3 +6,5 @@ efficientnet_b0_v3,3,EfficientNet-B0,AdamW,0.0002,0.0001,cross_entropy,0.0,0.3,3
 resnet18_tuned,3,ResNet-18,AdamW,5e-05,0.0005,label_smoothing,0.1,0.4,30,18,0.6584,,,,Supervisor feedback: lower LR + stronger L2. Worse than baseline.
 efficientnet_b0_tuned,3,EfficientNet-B0,AdamW,5e-05,0.0005,label_smoothing,0.1,0.4,30,22,0.6481,,,,Supervisor feedback: lower LR. Worse than ENv3.
 efficientnet_b0_v3_tuned,3,EfficientNet-B0,AdamW,3e-05,0.001,label_smoothing,0.15,0.5,30,18,0.617,,,,Supervisor feedback: lr=3e-5 + wd=1e-3. Underfitting.
+resnet18_best,3,ResNet-18,AdamW,0.0001,0.0001,cross_entropy,0.0,0.3,35,35,0.7082,,,,35-epoch run — augmentation change hurt vs original
+efficientnet_b0_best,3,EfficientNet-B0,AdamW,0.0001,0.0001,cross_entropy,0.0,0.3,35,29,0.679,,,,35-epoch run — consistent with previous EN runs
