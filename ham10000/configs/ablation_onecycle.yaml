@@ -17,3 +17,8 @@ train:
   epochs: 20
 loss:
   name: cross_entropy
+logging:
+  experiment_name: ablation_onecycle
+
+output:
+  checkpoint_dir: ham10000/results/checkpoints/ablation_onecycle

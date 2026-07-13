@@ -17,4 +17,9 @@ train:
 loss:
   name: focal
   focal_gamma: 2.0
+logging:
+  experiment_name: ablation_focal
+
+output:
+  checkpoint_dir: ham10000/results/checkpoints/ablation_focal
 # IMPORTANT: also disable class_weights in train.py for this run
