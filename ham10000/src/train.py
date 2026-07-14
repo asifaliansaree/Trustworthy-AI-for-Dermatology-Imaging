@@ -193,8 +193,20 @@ def build_scheduler(optimizer, cfg: dict, steps_per_epoch: int):
 def run_epoch(model, loader, criterion, optimizer,
               device, use_meta, train_mode,
               scaler=None, accum_steps=1,
-              max_grad_norm=1.0, ema=None):
-
+              max_grad_norm=1.0, ema=None,
+              scheduler=None, step_scheduler_per_batch=False):
+    """
+    scheduler / step_scheduler_per_batch:
+        OneCycleLR must be stepped once per optimizer.step() call across
+        the ENTIRE training run (not once per epoch) -- its internal
+        schedule is defined in terms of total batches, via
+        `steps_per_epoch` and `epochs` passed at construction time.
+        Previously this scheduler was never stepped at all, so the LR
+        stayed frozen at its initial warmup value (max_lr / div_factor)
+        for the whole run. Pass step_scheduler_per_batch=True only for
+        the onecycle case; cosine/plateau continue to be stepped once
+        per epoch in main(), as before.
+    """
     model.train() if train_mode else model.eval()
     total_loss, n_batches = 0.0, 0
 
@@ -238,6 +250,10 @@ def run_epoch(model, loader, criterion, optimizer,
 
                     if ema:
                         ema.update(model)
+
+                    # OneCycleLR: step once per optimizer step, not per epoch.
+                    if step_scheduler_per_batch and scheduler is not None:
+                        scheduler.step()
 
             total_loss += loss.item() * accum_steps
             n_batches  += 1
@@ -300,6 +316,7 @@ def main(config_path: str):
     )
     scaler    = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
     sched_name = cfg["train"].get("scheduler", "cosine")
+    step_per_batch = (sched_name == "onecycle")
 
     # ── Dirs ──────────────────────────────────────────────────
     ckpt_dir = cfg["output"]["checkpoint_dir"]
@@ -336,6 +353,7 @@ def main(config_path: str):
             device, use_meta, train_mode=True,
             scaler=scaler, accum_steps=accum_steps,
             max_grad_norm=max_grad, ema=ema,
+            scheduler=scheduler, step_scheduler_per_batch=step_per_batch,
         )
 
         # Validate (use EMA weights if enabled)
@@ -363,11 +381,14 @@ def main(config_path: str):
         if ema:
             model.load_state_dict(live_state)
 
-        # Scheduler step
+        # Scheduler step — cosine/plateau step once per epoch here.
+        # onecycle is stepped per-batch inside run_epoch() instead, so
+        # it is explicitly skipped in this block.
         if sched_name == "plateau":
             scheduler.step(val_bal_acc)
-        elif sched_name != "onecycle":
+        elif sched_name == "cosine":
             scheduler.step()
+        # onecycle: intentionally no epoch-level step -- handled per-batch above.
         lr_now = optimizer.param_groups[-1]["lr"]
 
         elapsed = time.time() - t0

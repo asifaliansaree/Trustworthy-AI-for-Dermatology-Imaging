@@ -51,6 +51,45 @@ class FocalLoss(nn.Module):
         return focal
 
 
+def compute_effective_num_weights(
+    class_counts,
+    beta: float = 0.999,
+    num_classes: Optional[int] = None,
+    device=None,
+) -> torch.Tensor:
+    """
+    Class-Balanced weights via "effective number of samples".
+    Cui et al. (2019) "Class-Balanced Loss Based on Effective Number of Samples"
+
+    weight_c = (1 - beta) / (1 - beta ** n_c)
+    then normalized so weights sum to num_classes (same convention as a
+    typical inverse-frequency class_weights.npy, so it's a drop-in swap).
+
+    Gentler than raw 1/n_c on very small classes (e.g. HAM10000's `df`
+    at 86 train images, `vasc` at 114) — those classes stop getting
+    disproportionately large weights past a point of diminishing returns,
+    which tends to generalize better than pure inverse-frequency weighting.
+
+    Args:
+        class_counts: array-like of per-class training sample counts,
+                      ordered to match your label indices (e.g. from
+                      np.bincount(labels, minlength=num_classes)).
+        beta:         closer to 1.0 = weights approach true inverse
+                      frequency; smaller = gentler / closer to uniform.
+                      0.999 is the value used in the original paper.
+        num_classes:  inferred from len(class_counts) if not given.
+    """
+    class_counts = np.asarray(class_counts, dtype=np.float64)
+    if num_classes is None:
+        num_classes = len(class_counts)
+
+    effective_num = 1.0 - np.power(beta, class_counts)
+    weights = (1.0 - beta) / np.maximum(effective_num, 1e-8)
+    weights = weights / weights.sum() * num_classes
+
+    return torch.tensor(weights, dtype=torch.float32, device=device)
+
+
 def build_loss(cfg: dict, class_weights: Optional[torch.Tensor] = None) -> nn.Module:
     """
     Build loss function from config dict.
@@ -59,6 +98,15 @@ def build_loss(cfg: dict, class_weights: Optional[torch.Tensor] = None) -> nn.Mo
         loss.name:             cross_entropy | label_smoothing | focal | weighted_focal
         loss.label_smoothing:  float (default 0.1), used when name=label_smoothing
         loss.focal_gamma:      float (default 2.0), used when name=focal / weighted_focal
+        loss.alpha_mode:       inverse | effective_num (default: inverse)
+                                Only used when name=weighted_focal.
+                                "inverse"       -> use `class_weights` as-is
+                                                   (unchanged prior behavior).
+                                "effective_num" -> recompute gentler per-class
+                                                   weights via Cui et al. (2019).
+                                                   Requires loss.class_counts
+                                                   and loss.effective_num_beta
+                                                   (default 0.999) in the config.
     """
     loss_cfg = cfg.get("loss", {})
     name     = loss_cfg.get("name", "cross_entropy")
@@ -78,8 +126,31 @@ def build_loss(cfg: dict, class_weights: Optional[torch.Tensor] = None) -> nn.Mo
         return FocalLoss(alpha=None, gamma=gamma)
 
     elif name == "weighted_focal":
-        gamma = loss_cfg.get("focal_gamma", 2.0)
-        return FocalLoss(alpha=class_weights, gamma=gamma)
+        gamma      = loss_cfg.get("focal_gamma", 2.0)
+        alpha_mode = loss_cfg.get("alpha_mode", "inverse")
+
+        if alpha_mode == "effective_num":
+            class_counts = loss_cfg.get("class_counts")
+            if class_counts is None:
+                raise ValueError(
+                    "loss.alpha_mode='effective_num' requires "
+                    "loss.class_counts (list of per-class train sample "
+                    "counts) in the config."
+                )
+            beta = loss_cfg.get("effective_num_beta", 0.999)
+            device = class_weights.device if class_weights is not None else None
+            alpha = compute_effective_num_weights(
+                class_counts, beta=beta, device=device
+            )
+        elif alpha_mode == "inverse":
+            alpha = class_weights
+        else:
+            raise ValueError(
+                f"Unknown loss.alpha_mode '{alpha_mode}'. "
+                "Choose: inverse | effective_num"
+            )
+
+        return FocalLoss(alpha=alpha, gamma=gamma)
 
     else:
         raise ValueError(
