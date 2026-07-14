@@ -1,3 +1,4 @@
+seed: 42
 data:
   augment: true
   data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
@@ -20,7 +21,6 @@ model:
   pretrained: true
 output:
   checkpoint_dir: ham10000/checkpoints/resnet18_v2_inverse_test
-seed: 42
 train:
   batch_size: 32
   early_stopping_patience: 10
