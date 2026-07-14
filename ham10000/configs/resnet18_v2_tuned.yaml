@@ -1,46 +1,44 @@
-seed: 42
-
 data:
-  data_dir: "/kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data"
-  num_workers: 2
-  img_size: 224
   augment: true
-
-model:
-  architecture: resnet18
-  num_classes: 7
-  metadata_dim: 0
-  pretrained: true
-  dropout: 0.4          # slightly higher than your 0.3 baseline — cheap regularizer
-  freeze_epochs: 4      # freeze backbone for 4 epochs, then unfreeze with discriminative LR
-
-train:
-  epochs: 45                       # give it room to converge; early stopping is the real guard
-  batch_size: 32
-  lr: 7.94e-05                     # from your corrected lr_finder.py run
-  weight_decay: 5e-4               # up from 1e-4 — stronger L2 regularization
-  scheduler: cosine                # cosine is already correctly implemented in train.py;
-                                    # sticking with it rather than onecycle until you've
-                                    # re-validated the just-fixed per-batch stepping
-  gradient_accumulation: 1
-  max_grad_norm: 1.0
-  use_ema: true                    # was off in every prior run — turn on
-  ema_decay: 0.999                 # 0.9999 is too slow for ~45 epochs on 8k images
-  early_stopping_patience: 10      # real early stopping — was previously == epochs (disabled)
-  use_weighted_sampler: false      # don't stack with weighted_focal — pick one imbalance fix
-
-loss:
-  name: weighted_focal
-  focal_gamma: 2.0
-  alpha_mode: effective_num        # gentler than raw inverse-frequency (see prior message)
-  effective_num_beta: 0.999
-  class_counts: [890, 5367, 412, 257, 891, 86, 114]   # mel,nv,bcc,akiec,bkl,df,vasc — must
-                                                        # match CLASS_MAP order in train.py
-
-output:
-  checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned
-
+  data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
+  img_size: 224
+  num_workers: 2
 logging:
+  checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned
   experiment_name: resnet18_v2_tuned
   save_dir: experiments/resnet18_v2_tuned
+loss:
+  alpha_mode: effective_num
+  class_counts:
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
+  effective_num_beta: 0.999
+  focal_gamma: 2.0
+  name: weighted_focal
+model:
+  architecture: resnet18
+  dropout: 0.4
+  freeze_epochs: 4
+  metadata_dim: 0
+  num_classes: 7
+  pretrained: true
+output:
   checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned
+seed: 42
+train:
+  batch_size: 32
+  early_stopping_patience: 10
+  ema_decay: 0.999
+  epochs: 45
+  gradient_accumulation: 1
+  lr: 7.94e-05
+  max_grad_norm: 1.0
+  scheduler: cosine
+  use_ema: true
+  use_weighted_sampler: false
+  weight_decay: 0.0005
