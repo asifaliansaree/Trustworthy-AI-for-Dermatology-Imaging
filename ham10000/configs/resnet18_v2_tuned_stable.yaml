@@ -1,53 +1,44 @@
 seed: 42
-
 data:
   augment: true
   data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
   img_size: 224
   num_workers: 2
-
 logging:
   checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned_stable
   experiment_name: resnet18_v2_tuned_stable
   save_dir: experiments/resnet18_v2_tuned_stable
-
 loss:
   name: weighted_focal
-  alpha_mode: effective_num      # KEEP: bounded/saturating, safe for 62x imbalance. Never use "inverse" with this class distribution.
+  alpha_mode: effective_num
   effective_num_beta: 0.999
-  focal_gamma: 1.5               # DOWN from 2.0 — 2.0 stacked with effective_num already over-focuses on hard/rare examples
+  focal_gamma: 1.5
   class_counts:
-    - 890
-    - 5367
-    - 412
-    - 257
-    - 891
-    - 86
-    - 114
-
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
 model:
   architecture: resnet18
-  dropout: 0.35                  # DOWN from 0.4 — 0.4 + 5e-4 wd + focal loss was very likely under-fitting
-  freeze_epochs: 4                # KEEP — freeze-then-finetune is a sound two-phase strategy, don't remove it
+  dropout: 0.35
+  freeze_epochs: 4
   metadata_dim: 0
   num_classes: 7
   pretrained: true
-
 output:
   checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned_stable
-
 train:
   batch_size: 32
-  early_stopping_patience: 12    # slightly UP from 10 to give the milder regularization more room over 45 epochs
+  early_stopping_patience: 12
   ema_decay: 0.999
   epochs: 45
   gradient_accumulation: 1
-  lr: 1.0e-4                     # UP from 7.94e-05, back to your proven-working baseline LR
-  max_grad_norm: 1.0             # KEEP — gradient clipping is good practice with focal loss, don't remove
+  lr: 0.0001
+  max_grad_norm: 1.0
   scheduler: cosine
-  use_ema: false                 # OFF — this is the #1 suspect. Your own project notes recorded EMA corrupting
-                                  # validation in an earlier run. Confirm the fix is actually in train.py before
-                                  # ever setting this back to true. Until you can verify with 100% certainty, keep it off.
-  use_weighted_sampler: false    # KEEP false — loss reweighting (effective_num) + sampler reweighting together
-                                  # is redundant double-correction, don't turn this on alongside alpha_mode
-  weight_decay: 0.0002           # DOWN from 0.0005 — 5x baseline was too aggressive stacked with dropout 0.4
+  use_ema: false
+  use_weighted_sampler: false
+  weight_decay: 0.0002
