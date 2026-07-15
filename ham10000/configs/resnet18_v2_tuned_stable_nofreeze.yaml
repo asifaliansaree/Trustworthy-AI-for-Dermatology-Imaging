@@ -5,9 +5,9 @@ data:
   img_size: 224
   num_workers: 2
 logging:
-  checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned_stable_unfreeze1
-  experiment_name: resnet18_v2_tuned_stable_unfreeze1
-  save_dir: experiments/resnet18_v2_tuned_stable_unfreeze1
+  checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned_stable_nofreeze
+  experiment_name: resnet18_v2_tuned_stable_nofreeze
+  save_dir: experiments/resnet18_v2_tuned_stable_nofreeze
 loss:
   name: weighted_focal
   alpha_mode: effective_num
@@ -24,12 +24,15 @@ loss:
 model:
   architecture: resnet18
   dropout: 0.35
-  freeze_epochs: 1        # CHANGED from 4 — only lever changed this run
+  freeze_epochs: 0        # CHANGED from 1 — eliminates the permanent lr/10
+                           # discriminative rate on the backbone (see build_optimizer:
+                           # use_disc = freeze_epochs > 0, applies for ALL epochs,
+                           # not just the frozen ones)
   metadata_dim: 0
   num_classes: 7
   pretrained: true
 output:
-  checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned_stable_unfreeze1
+  checkpoint_dir: ham10000/checkpoints/resnet18_v2_tuned_stable_nofreeze
 train:
   batch_size: 32
   early_stopping_patience: 12
