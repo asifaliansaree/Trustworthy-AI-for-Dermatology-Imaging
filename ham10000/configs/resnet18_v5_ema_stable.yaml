@@ -1,30 +1,26 @@
 seed: 42
-
 data:
   augment: true
   data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
   img_size: 224
   num_workers: 2
-
 logging:
   checkpoint_dir: ham10000/checkpoints/resnet18_v5_ema_stable
   experiment_name: resnet18_v5_ema_stable
   save_dir: experiments/resnet18_v5_ema_stable
-
 loss:
   name: weighted_focal
   alpha_mode: effective_num
   effective_num_beta: 0.999
   focal_gamma: 1.5
   class_counts:
-    - 890
-    - 5367
-    - 412
-    - 257
-    - 891
-    - 86
-    - 114
-
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
 model:
   architecture: resnet18
   dropout: 0.35
@@ -32,10 +28,8 @@ model:
   metadata_dim: 0
   num_classes: 7
   pretrained: true
-
 output:
   checkpoint_dir: ham10000/checkpoints/resnet18_v5_ema_stable
-
 train:
   batch_size: 32
   early_stopping_patience: 12
