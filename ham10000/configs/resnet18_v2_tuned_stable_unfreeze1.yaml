@@ -24,7 +24,7 @@ loss:
 model:
   architecture: resnet18
   dropout: 0.35
-  freeze_epochs: 1        # CHANGED from 4 — only lever changed this run
+  freeze_epochs: 1
   metadata_dim: 0
   num_classes: 7
   pretrained: true
