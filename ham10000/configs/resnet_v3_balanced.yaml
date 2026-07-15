@@ -1,0 +1,39 @@
+seed: 42
+
+data:
+  data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
+  img_size: 224
+  num_workers: 2
+  augment: true
+
+model:
+  architecture: resnet18
+  num_classes: 7
+  metadata_dim: 0
+  pretrained: true
+  dropout: 0.3
+  freeze_epochs: 0
+
+train:
+  epochs: 40
+  batch_size: 32
+  lr: 0.0001
+  weight_decay: 0.0001
+  scheduler: cosine
+  gradient_accumulation: 1
+  max_grad_norm: 1.0
+  use_ema: false
+  use_weighted_sampler: true
+  early_stopping_patience: 12
+
+loss:
+  name: focal
+  focal_gamma: 1.5
+
+output:
+  checkpoint_dir: ham10000/checkpoints/resnet18_v3_balanced
+
+logging:
+  experiment_name: resnet18_v3_balanced
+  save_dir: experiments/resnet18_v3_balanced
+  checkpoint_dir: ham10000/checkpoints/resnet18_v3_balanced
