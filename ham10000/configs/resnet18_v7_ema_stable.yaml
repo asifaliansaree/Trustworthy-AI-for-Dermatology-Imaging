@@ -1,0 +1,49 @@
+seed: 42
+data:
+  augment: true
+  data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
+  img_size: 224
+  num_workers: 2
+logging:
+  checkpoint_dir: ham10000/checkpoints/resnet18_v7_ema_stable
+  experiment_name: resnet18_v7_ema_stable
+  save_dir: experiments/resnet18_v7_ema_stable
+loss:
+  name: weighted_focal
+  alpha_mode: effective_num
+  effective_num_beta: 0.999      # back to v5's strength (v6's 0.99 was fine alone,
+                                  # but wrong once stacked with the sampler)
+  focal_gamma: 1.5
+  class_counts:
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
+model:
+  architecture: resnet18
+  dropout: 0.3                    # back to baseline strength — 0.4 was over-regularizing
+  freeze_epochs: 1                # short 1-epoch head warmup only, not 3
+  metadata_dim: 0
+  num_classes: 7
+  pretrained: true
+output:
+  checkpoint_dir: ham10000/checkpoints/resnet18_v7_ema_stable
+train:
+  batch_size: 32
+  early_stopping_patience: 15
+  ema_decay: 0.999                # v5's value — proven stable
+  epochs: 50
+  gradient_accumulation: 1
+  lr: 0.0001
+  lr_warmup_epochs: 1             # match freeze_epochs: 1 epoch of head-only warmup
+  max_grad_norm: 1.0
+  scheduler: cosine
+  use_ema: true
+  use_weighted_sampler: false     # OFF — do not stack with effective_num loss weighting
+  weight_decay: 0.0002            # back to v5's value
+  best_metric_smoothing_window: 5 # keep from v6 — genuinely useful for checkpoint
+                                  # selection given the rare-class validation noise
+  mixup_alpha: 0.2                # NEW — see train.py patch below. Set to 0 to disable.

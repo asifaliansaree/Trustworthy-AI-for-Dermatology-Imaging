@@ -36,6 +36,32 @@ from metadata_encoder import MetadataEncoder
 import evaluate
 
 
+# ── Mixup ─────────────────────────────────────────────────────
+def mixup_data(images: torch.Tensor, labels: torch.Tensor, alpha: float):
+    """
+    Zhang et al. (2018) "mixup: Beyond Empirical Risk Minimization"
+
+    Blends pairs of images/labels within the batch:
+        mixed_x = lam * x_i + (1 - lam) * x_j
+    The loss is then computed as:
+        lam * criterion(pred, y_i) + (1 - lam) * criterion(pred, y_j)
+    which is mathematically equivalent to training on the mixed label
+    (works for any reduction='mean' loss, including FocalLoss/CE here,
+    since the interpolation happens outside the loss function itself).
+
+    alpha <= 0 disables mixup (returns the batch unchanged, lam=1).
+    """
+    if alpha <= 0:
+        return images, labels, labels, 1.0
+
+    lam  = np.random.beta(alpha, alpha)
+    perm = torch.randperm(images.size(0), device=images.device)
+
+    mixed_images = lam * images + (1 - lam) * images[perm]
+    labels_a, labels_b = labels, labels[perm]
+    return mixed_images, labels_a, labels_b, lam
+
+
 # ── Reproducibility ───────────────────────────────────────────
 def set_seed(seed: int):
     random.seed(seed)
@@ -217,7 +243,8 @@ def run_epoch(model, loader, criterion, optimizer,
               device, use_meta, train_mode,
               scaler=None, accum_steps=1,
               max_grad_norm=1.0, ema=None,
-              scheduler=None, step_scheduler_per_batch=False):
+              scheduler=None, step_scheduler_per_batch=False,
+              mixup_alpha=0.0):
     """
     scheduler / step_scheduler_per_batch:
         OneCycleLR must be stepped once per optimizer.step() call across
@@ -246,11 +273,26 @@ def run_epoch(model, loader, criterion, optimizer,
             images = images.to(device)
             labels = labels.to(device)
 
+            # Mixup: training-only, and only in image-only mode (mixing the
+            # 18-d metadata vector isn't well-defined the same way, and the
+            # current configs run with metadata_dim=0 anyway).
+            apply_mixup = train_mode and mixup_alpha > 0 and not use_meta
+            if apply_mixup:
+                images, labels_a, labels_b, lam = mixup_data(
+                    images, labels, mixup_alpha
+                )
+            else:
+                labels_a, labels_b, lam = labels, labels, 1.0
+
             # Mixed precision forward
             with torch.cuda.amp.autocast(enabled=(scaler is not None)):
                 logits = model(images, meta)
-                loss   = criterion(logits, labels)
-                loss   = loss / accum_steps
+                if apply_mixup:
+                    loss = lam * criterion(logits, labels_a) + \
+                           (1 - lam) * criterion(logits, labels_b)
+                else:
+                    loss = criterion(logits, labels)
+                loss = loss / accum_steps
 
             if train_mode:
                 if scaler:
@@ -298,6 +340,7 @@ def main(config_path: str):
     max_grad     = cfg["train"].get("max_grad_norm", 1.0)
     freeze_ep    = cfg["model"].get("freeze_epochs", 0)
     early_stop   = cfg["train"].get("early_stopping_patience", 999)
+    mixup_alpha  = cfg["train"].get("mixup_alpha", 0.0)
     experiment   = cfg["logging"]["experiment_name"]
 
     print(f"\nDevice      : {device}")
@@ -306,6 +349,7 @@ def main(config_path: str):
     print(f"Metadata    : {use_meta}")
     print(f"EMA         : {use_ema}")
     print(f"Freeze ep   : {freeze_ep}")
+    print(f"Mixup alpha : {mixup_alpha}")
 
     # ── Encoder ───────────────────────────────────────────────
     encoder = None
@@ -379,6 +423,7 @@ def main(config_path: str):
             scaler=scaler, accum_steps=accum_steps,
             max_grad_norm=max_grad, ema=ema,
             scheduler=scheduler, step_scheduler_per_batch=step_per_batch,
+            mixup_alpha=mixup_alpha,
         )
 
         # Validate (use EMA weights if enabled)
