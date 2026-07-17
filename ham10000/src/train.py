@@ -122,7 +122,15 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
 
         labels       = train_df["dx"].map(CLASS_MAP).values
         class_counts = np.bincount(labels, minlength=len(CLASS_MAP))
-        sample_weights = 1.0 / class_counts[labels]
+
+        # sampler_power=1.0 -> full inverse-frequency (near-uniform class
+        # exposure every epoch, original behavior). Lower values soften the
+        # correction: rare classes are still boosted, but not repeated as
+        # many times per epoch, which reduces memorization risk on the
+        # smallest classes (df: 86, vasc: 114) once combined with a
+        # class-weighted loss that's already correcting the same imbalance.
+        sampler_power = cfg["train"].get("sampler_power", 1.0)
+        sample_weights = 1.0 / np.power(class_counts[labels], sampler_power)
 
         sampler = WeightedRandomSampler(
             weights=sample_weights,
