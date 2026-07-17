@@ -23,7 +23,7 @@ loss:
   - 114
 model:
   architecture: resnet18
-  dropout: 0.4                    # up from 0.35 -- see note 2
+  dropout: 0.4
   freeze_epochs: 0
   metadata_dim: 0
   num_classes: 7
@@ -32,7 +32,7 @@ output:
   checkpoint_dir: ham10000/checkpoints/resnet18_v7_softened_sampler
 train:
   batch_size: 32
-  early_stopping_patience: 10     # down from 12 -- stop sooner once the plateau ends
+  early_stopping_patience: 10
   ema_decay: 0.999
   epochs: 45
   gradient_accumulation: 1
@@ -42,6 +42,6 @@ train:
   scheduler: cosine
   use_ema: true
   use_weighted_sampler: true
-  sampler_power: 0.5              # new -- see note 1
-  weight_decay: 0.0004            # up from 0.0003 -- see note 2
+  sampler_power: 0.5
+  weight_decay: 0.0004
   best_metric_smoothing_window: 5
