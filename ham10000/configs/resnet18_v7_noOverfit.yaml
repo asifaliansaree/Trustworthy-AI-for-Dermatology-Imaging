@@ -5,9 +5,9 @@ data:
   img_size: 224
   num_workers: 2
 logging:
-  checkpoint_dir: ham10000/checkpoints/resnet18_v7_no_overfit
-  experiment_name: resnet18_v7_no_overfit
-  save_dir: experiments/resnet18_v7_no_overfit
+  checkpoint_dir: ham10000/checkpoints/resnet18_v7_noOverfit
+  experiment_name: resnet18_v7_noOverfit
+  save_dir: experiments/resnet18_v7_noOverfit
 loss:
   name: weighted_focal
   alpha_mode: effective_num
@@ -23,13 +23,13 @@ loss:
   - 114
 model:
   architecture: resnet18
-  dropout: 0.35                   # back to v6's level -- see note 3
-  freeze_epochs: 3                # new -- see note 1
+  dropout: 0.35
+  freeze_epochs: 3
   metadata_dim: 0
   num_classes: 7
   pretrained: true
 output:
-  checkpoint_dir: ham10000/checkpoints/resnet18_v7_no_overfit
+  checkpoint_dir: ham10000/checkpoints/resnet18_v7_noOverfit
 train:
   batch_size: 32
   early_stopping_patience: 10
@@ -37,12 +37,12 @@ train:
   epochs: 45
   gradient_accumulation: 1
   lr: 0.0001
-  lr_warmup_epochs: 2              # shortened, freeze_epochs now does most of the calming
+  lr_warmup_epochs: 2
   max_grad_norm: 1.0
   scheduler: cosine
   use_ema: true
   use_weighted_sampler: true
   sampler_power: 0.5
-  mixup_alpha: 0.3                 # new -- see note 2
+  mixup_alpha: 0.3
   weight_decay: 0.0003
   best_metric_smoothing_window: 5
