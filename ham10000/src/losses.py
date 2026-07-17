@@ -38,10 +38,27 @@ class FocalLoss(nn.Module):
         targets: torch.Tensor,
     ) -> torch.Tensor:
 
+        # Weighted loss (used for the loss magnitude itself).
         ce_loss = F.cross_entropy(
             inputs, targets, weight=self.alpha, reduction="none"
         )
-        pt = torch.exp(-ce_loss)
+
+        # pt must come from the UNWEIGHTED cross-entropy. If alpha is folded
+        # in here too (via weight=self.alpha), pt stops being the model's
+        # true class-confidence and becomes pt**alpha_c instead. For
+        # up-weighted rare classes (large alpha_c) that artificially crushes
+        # pt, which drives (1 - pt)**gamma toward its max on TOP OF the
+        # already alpha-scaled ce_loss -- i.e. alpha gets applied twice,
+        # concentrated on exactly the rare classes it's meant to help.
+        # That's a real source of the loss spikes seen on rare-class-heavy
+        # batches, and it gets worse (not better) once a class-balanced
+        # sampler puts rare classes in every batch instead of occasionally.
+        with torch.no_grad():
+            ce_loss_unweighted = F.cross_entropy(
+                inputs, targets, weight=None, reduction="none"
+            )
+            pt = torch.exp(-ce_loss_unweighted)
+
         focal = (1 - pt) ** self.gamma * ce_loss
 
         if self.reduction == "mean":

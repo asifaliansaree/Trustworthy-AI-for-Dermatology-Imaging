@@ -66,10 +66,23 @@ class EMA:
     def update(self, model: nn.Module):
         for s, m in zip(self.shadow.parameters(), model.parameters()):
             s.data.mul_(self.decay).add_(m.data, alpha=1 - self.decay)
+        # BatchNorm running_mean/running_var are buffers, not parameters, so
+        # the loop above never touches them. Left alone, eval-time BN stats
+        # come from the live (fast-moving) model while the weights come from
+        # the smoothed EMA shadow -- an internally inconsistent pairing.
+        # Smooth float buffers the same way; integer buffers (e.g.
+        # num_batches_tracked) are just copied since averaging doesn't apply.
+        for s, m in zip(self.shadow.buffers(), model.buffers()):
+            if s.dtype.is_floating_point:
+                s.data.mul_(self.decay).add_(m.data, alpha=1 - self.decay)
+            else:
+                s.data.copy_(m.data)
 
     def apply_to(self, model: nn.Module):
         """Copy EMA weights into model for evaluation."""
         for s, m in zip(self.shadow.parameters(), model.parameters()):
+            m.data.copy_(s.data)
+        for s, m in zip(self.shadow.buffers(), model.buffers()):
             m.data.copy_(s.data)
 
 
@@ -169,11 +182,21 @@ def build_optimizer(model: nn.Module, cfg: dict):
 def build_scheduler(optimizer, cfg: dict, steps_per_epoch: int):
     sched_cfg = cfg["train"].get("scheduler", "cosine")
     epochs    = cfg["train"]["epochs"]
+    warmup_ep = cfg["train"].get("lr_warmup_epochs", 0)
 
     if sched_cfg == "cosine":
-        return torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=epochs, eta_min=1e-6
+        cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=max(epochs - warmup_ep, 1), eta_min=1e-6
         )
+        if warmup_ep > 0:
+            # Linear warmup from 10% of base LR up to 100%, then hand off to cosine.
+            warmup = torch.optim.lr_scheduler.LinearLR(
+                optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_ep
+            )
+            return torch.optim.lr_scheduler.SequentialLR(
+                optimizer, schedulers=[warmup, cosine], milestones=[warmup_ep]
+            )
+        return cosine
     elif sched_cfg == "onecycle":
         return torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
@@ -334,6 +357,8 @@ def main(config_path: str):
     best_val     = -float("inf")
     no_improve   = 0
     epochs       = cfg["train"]["epochs"]
+    smooth_win   = cfg["train"].get("best_metric_smoothing_window", 1)
+    bal_acc_hist = []
 
     print(f"\nTraining for {epochs} epochs — "
           f"loss={cfg.get('loss',{}).get('name','cross_entropy')}, "
@@ -421,18 +446,26 @@ def main(config_path: str):
         }
         torch.save(payload, last_ckpt)
 
-        if val_bal_acc > best_val:
-            best_val   = val_bal_acc
+        # Smooth the metric used for "best" selection so a single lucky/unlucky
+        # epoch (see the noisy zig-zag in earlier runs) can't get checkpointed
+        # as best just because it happened to land on a spike.
+        bal_acc_hist.append(val_bal_acc)
+        window       = bal_acc_hist[-smooth_win:]
+        smoothed_val = sum(window) / len(window)
+
+        if smoothed_val > best_val:
+            best_val   = smoothed_val
             no_improve = 0
             torch.save(payload, best_ckpt)
-            print(f"  → New best ({val_bal_acc:.4f}), saved.")
+            print(f"  → New best (raw={val_bal_acc:.4f}, "
+                  f"smoothed={smoothed_val:.4f}), saved.")
         else:
             no_improve += 1
             if no_improve >= early_stop:
                 print(f"\nEarly stopping triggered at epoch {epoch}.")
                 break
 
-    print(f"\nBest val balanced accuracy: {best_val:.4f}")
+    print(f"\nBest val balanced accuracy (smoothed): {best_val:.4f}")
     print(f"Checkpoints → {ckpt_dir}")
 
 
