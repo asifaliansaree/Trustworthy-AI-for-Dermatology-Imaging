@@ -225,7 +225,8 @@ def run_epoch(model, loader, criterion, optimizer,
               device, use_meta, train_mode,
               scaler=None, accum_steps=1,
               max_grad_norm=1.0, ema=None,
-              scheduler=None, step_scheduler_per_batch=False):
+              scheduler=None, step_scheduler_per_batch=False,
+              mixup_alpha=0.0):
     """
     scheduler / step_scheduler_per_batch:
         OneCycleLR must be stepped once per optimizer.step() call across
@@ -237,6 +238,19 @@ def run_epoch(model, loader, criterion, optimizer,
         for the whole run. Pass step_scheduler_per_batch=True only for
         the onecycle case; cosine/plateau continue to be stepped once
         per epoch in main(), as before.
+
+    mixup_alpha:
+        0.0 (default) = off, identical to prior behavior.
+        >0 = standard mixup (Zhang et al. 2018), train only. Blends each
+        image with another random image in the same batch (lam ~
+        Beta(alpha, alpha)) and takes a lam-weighted combination of the
+        two per-sample losses. This is the direct fix for memorizing the
+        rare classes (df: 86, vasc: 114 train images) once the weighted
+        sampler puts them in every batch -- mixup means the model never
+        sees the exact same pixels twice, only blends of them, which
+        breaks memorization without reducing how often rare classes
+        contribute gradient signal. Only applied when train_mode=True;
+        validation is always a clean, unmixed forward pass.
     """
     model.train() if train_mode else model.eval()
     total_loss, n_batches = 0.0, 0
@@ -254,10 +268,21 @@ def run_epoch(model, loader, criterion, optimizer,
             images = images.to(device)
             labels = labels.to(device)
 
+            do_mixup = train_mode and mixup_alpha > 0.0
+            if do_mixup:
+                lam = float(np.random.beta(mixup_alpha, mixup_alpha))
+                perm = torch.randperm(images.size(0), device=device)
+                images = lam * images + (1 - lam) * images[perm]
+                labels_b = labels[perm]
+
             # Mixed precision forward
             with torch.cuda.amp.autocast(enabled=(scaler is not None)):
                 logits = model(images, meta)
-                loss   = criterion(logits, labels)
+                if do_mixup:
+                    loss = lam * criterion(logits, labels) + \
+                           (1 - lam) * criterion(logits, labels_b)
+                else:
+                    loss = criterion(logits, labels)
                 loss   = loss / accum_steps
 
             if train_mode:
@@ -306,6 +331,7 @@ def main(config_path: str):
     max_grad     = cfg["train"].get("max_grad_norm", 1.0)
     freeze_ep    = cfg["model"].get("freeze_epochs", 0)
     early_stop   = cfg["train"].get("early_stopping_patience", 999)
+    mixup_alpha  = cfg["train"].get("mixup_alpha", 0.0)
     experiment   = cfg["logging"]["experiment_name"]
 
     print(f"\nDevice      : {device}")
@@ -314,6 +340,7 @@ def main(config_path: str):
     print(f"Metadata    : {use_meta}")
     print(f"EMA         : {use_ema}")
     print(f"Freeze ep   : {freeze_ep}")
+    print(f"Mixup alpha : {mixup_alpha}")
 
     # ── Encoder ───────────────────────────────────────────────
     encoder = None
@@ -387,6 +414,7 @@ def main(config_path: str):
             scaler=scaler, accum_steps=accum_steps,
             max_grad_norm=max_grad, ema=ema,
             scheduler=scheduler, step_scheduler_per_batch=step_per_batch,
+            mixup_alpha=mixup_alpha,
         )
 
         # Validate (use EMA weights if enabled)
