@@ -1,4 +1,3 @@
-seed: 42
 data:
   augment: true
   data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
@@ -9,10 +8,7 @@ logging:
   experiment_name: resnet18_v9_tuned
   save_dir: experiments/resnet18_v9_tuned
 loss:
-  name: weighted_focal
   alpha_mode: effective_num
-  effective_num_beta: 0.999
-  focal_gamma: 1.5
   class_counts:
   - 890
   - 5367
@@ -21,6 +17,9 @@ loss:
   - 891
   - 86
   - 114
+  effective_num_beta: 0.999
+  focal_gamma: 1.5
+  name: weighted_focal
 model:
   architecture: resnet18
   dropout: 0.35
@@ -30,17 +29,16 @@ model:
   pretrained: true
 output:
   checkpoint_dir: ham10000/checkpoints/resnet18_v9_tuned
+seed: 42
 train:
   batch_size: 32
-  best_metric_smoothing_window: 5
-  early_stopping_patience: 15
+  early_stopping_patience: 12
   ema_decay: 0.999
   epochs: 45
   gradient_accumulation: 1
   lr: 0.0001
-  lr_warmup_epochs: 2
   max_grad_norm: 1.0
   scheduler: cosine
-  use_ema: true
+  use_ema: false
   use_weighted_sampler: false
   weight_decay: 0.0002
