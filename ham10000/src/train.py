@@ -408,13 +408,20 @@ def main(config_path: str):
             print(f"  [Epoch {epoch}] Backbone unfrozen — full fine-tuning begins.")
 
         # Train
+        # Mixup only makes sense once the backbone is unfrozen: during the
+        # frozen head-only phase the feature extractor is fixed, so mixed
+        # pixel-space inputs just add noise to a classifier that has no
+        # capacity to adapt around it. Gating this out fixed a real
+        # underfitting regression (v8 run: bal_acc capped at 0.754 with
+        # mixup active for all 3 frozen epochs).
+        epoch_mixup_alpha = mixup_alpha if epoch > freeze_ep else 0.0
         tr_loss = run_epoch(
             model, loaders["train"], criterion, optimizer,
             device, use_meta, train_mode=True,
             scaler=scaler, accum_steps=accum_steps,
             max_grad_norm=max_grad, ema=ema,
             scheduler=scheduler, step_scheduler_per_batch=step_per_batch,
-            mixup_alpha=mixup_alpha,
+            mixup_alpha=epoch_mixup_alpha,
         )
 
         # Validate (use EMA weights if enabled)
