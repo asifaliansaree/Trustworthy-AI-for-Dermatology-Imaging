@@ -24,7 +24,7 @@ loss:
 model:
   architecture: resnet18
   dropout: 0.35
-  freeze_epochs: 0                # stays 0 -- discriminative LR no longer requires freezing
+  freeze_epochs: 0
   metadata_dim: 0
   num_classes: 7
   pretrained: true
@@ -43,5 +43,5 @@ train:
   use_ema: true
   use_weighted_sampler: true
   weight_decay: 0.0003
-  backbone_lr_ratio: 0.1           # ONLY CHANGE vs v6 -- backbone gets lr*0.1, requires train.py update
+  backbone_lr_ratio: 0.1
   best_metric_smoothing_window: 5
