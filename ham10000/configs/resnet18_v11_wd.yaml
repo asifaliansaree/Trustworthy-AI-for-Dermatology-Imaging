@@ -42,5 +42,5 @@ train:
   scheduler: cosine
   use_ema: true
   use_weighted_sampler: true
-  weight_decay: 0.0005            # ONLY CHANGE vs v6 (was 0.0003) -- isolate this variable
+  weight_decay: 0.0005
   best_metric_smoothing_window: 5
