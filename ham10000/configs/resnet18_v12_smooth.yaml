@@ -13,7 +13,7 @@ loss:
   alpha_mode: effective_num
   effective_num_beta: 0.99
   focal_gamma: 1.5
-  label_smoothing: 0.1            # ONLY CHANGE vs v6 -- requires the losses.py update
+  label_smoothing: 0.1
   class_counts:
   - 890
   - 5367
