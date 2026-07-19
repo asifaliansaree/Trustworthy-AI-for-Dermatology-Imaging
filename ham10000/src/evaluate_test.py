@@ -27,7 +27,7 @@ from dataset import HAM10000Dataset
 from metadata_encoder import MetadataEncoder
 from model import DermaNet
 
-CLASSES = ['akiec', 'bcc', 'bkl', 'df', 'mel', 'nv', 'vasc']
+CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
 
 
 @torch.no_grad()

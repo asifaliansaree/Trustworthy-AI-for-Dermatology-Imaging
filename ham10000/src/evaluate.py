@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from sklearn.metrics import balanced_accuracy_score, f1_score, confusion_matrix, roc_auc_score
 
-CLASSES = ['akiec', 'bcc', 'bkl', 'df', 'mel', 'nv', 'vasc']
+CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
 
 
 @torch.no_grad()

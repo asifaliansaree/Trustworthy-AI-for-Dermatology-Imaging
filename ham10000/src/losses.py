@@ -26,11 +26,13 @@ class FocalLoss(nn.Module):
         alpha: Optional[torch.Tensor] = None,
         gamma: float = 2.0,
         reduction: str = "mean",
+        label_smoothing: float = 0.0,
     ):
         super().__init__()
-        self.alpha     = alpha
-        self.gamma     = gamma
-        self.reduction = reduction
+        self.alpha           = alpha
+        self.gamma           = gamma
+        self.reduction        = reduction
+        self.label_smoothing  = label_smoothing
 
     def forward(
         self,
@@ -39,8 +41,12 @@ class FocalLoss(nn.Module):
     ) -> torch.Tensor:
 
         # Weighted loss (used for the loss magnitude itself).
+        # label_smoothing here directly stops per-example loss from being
+        # driven toward zero on easy/confident examples -- combats the
+        # train_loss-collapses-toward-zero pattern seen in v2-v10 runs.
         ce_loss = F.cross_entropy(
-            inputs, targets, weight=self.alpha, reduction="none"
+            inputs, targets, weight=self.alpha,
+            label_smoothing=self.label_smoothing, reduction="none"
         )
 
         # pt must come from the UNWEIGHTED cross-entropy. If alpha is folded
@@ -139,12 +145,14 @@ def build_loss(cfg: dict, class_weights: Optional[torch.Tensor] = None) -> nn.Mo
         )
 
     elif name == "focal":
-        gamma = loss_cfg.get("focal_gamma", 2.0)
-        return FocalLoss(alpha=None, gamma=gamma)
+        gamma           = loss_cfg.get("focal_gamma", 2.0)
+        label_smoothing = loss_cfg.get("label_smoothing", 0.0)
+        return FocalLoss(alpha=None, gamma=gamma, label_smoothing=label_smoothing)
 
     elif name == "weighted_focal":
-        gamma      = loss_cfg.get("focal_gamma", 2.0)
-        alpha_mode = loss_cfg.get("alpha_mode", "inverse")
+        gamma           = loss_cfg.get("focal_gamma", 2.0)
+        alpha_mode      = loss_cfg.get("alpha_mode", "inverse")
+        label_smoothing = loss_cfg.get("label_smoothing", 0.0)
 
         if alpha_mode == "effective_num":
             class_counts = loss_cfg.get("class_counts")
@@ -167,7 +175,7 @@ def build_loss(cfg: dict, class_weights: Optional[torch.Tensor] = None) -> nn.Mo
                 "Choose: inverse | effective_num"
             )
 
-        return FocalLoss(alpha=alpha, gamma=gamma)
+        return FocalLoss(alpha=alpha, gamma=gamma, label_smoothing=label_smoothing)
 
     else:
         raise ValueError(

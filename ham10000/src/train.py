@@ -174,11 +174,21 @@ def build_optimizer(model: nn.Module, cfg: dict):
     lr        = train_cfg["lr"]
     wd        = train_cfg.get("weight_decay", 1e-4)
 
-    # Discriminative LR: backbone gets lr/10, classifier gets full lr
-    use_disc = cfg["model"].get("freeze_epochs", 0) > 0
+    # Discriminative LR: backbone gets a lower LR, classifier gets full lr.
+    # Previously this was tied to freeze_epochs > 0, which meant it could
+    # never be tested on its own -- every run so far either got both
+    # (frozen-then-full-LR) or neither. train.backbone_lr_ratio lets you
+    # use discriminative LR with freeze_epochs=0 (always-unfrozen), which
+    # is the untested combination.
+    backbone_lr_ratio = train_cfg.get("backbone_lr_ratio", None)
+    use_disc = (
+        cfg["model"].get("freeze_epochs", 0) > 0
+        or backbone_lr_ratio is not None
+    )
     if use_disc:
+        ratio = backbone_lr_ratio if backbone_lr_ratio is not None else 0.1
         param_groups = model.get_parameter_groups(
-            lr_backbone=lr / 10,
+            lr_backbone=lr * ratio,
             lr_classifier=lr,
         )
     else:

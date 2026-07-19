@@ -16,7 +16,7 @@ for p in [_SRC, _HAM, _ROOT]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-CLASSES   = ['akiec','bcc','bkl','df','mel','nv','vasc']
+CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
 CLASS_MAP = {c: i for i, c in enumerate(CLASSES)}
 MEAN      = [0.485, 0.456, 0.406]
 STD       = [0.229, 0.224, 0.225]
