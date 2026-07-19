@@ -18,8 +18,13 @@ from utils import (normalize_attr, overlay_on_image,
                    load_xai_targets, CLASSES)
 
 def get_target_layer(model):
-    """Last conv layer in ResNet-18 = layer4[-1].conv2"""
-    return model.backbone[-3][-1].conv2
+    """Last conv layer in ResNet-18 = layer4[-1].conv2
+
+    backbone = nn.Sequential(conv1, bn1, relu, maxpool,
+                              layer1, layer2, layer3, layer4, avgpool)
+    avgpool is index -1, so layer4 is index -2 (NOT -3 - that's layer3).
+    """
+    return model.backbone[-2][-1].conv2
 
 def compute_gradcam(model, tensor, target_class, device):
     model.eval()
@@ -74,20 +79,26 @@ def run_gradcam_batch(cases, out_dir, model, device, max_cases=20):
     return results
 
 if __name__ == "__main__":
+    import json, pandas as pd
     model, device, _ = load_model_and_config()
-    targets = load_xai_targets()
 
-    print("\n=== Grad-CAM on failure cases ===")
+    with open("ham10000/results/xai_targets_incorrect_melnv.json") as f:
+        incorrect_targets = json.load(f)
+    print("\n=== Grad-CAM on failure cases (mel->nv) ===")
     fail_results = run_gradcam_batch(
-        targets,
-        "ham10000/results/xai/gradcam/failures",
-        model, device, max_cases=20
-    )
+        incorrect_targets, "ham10000/results/xai/gradcam/failures",
+        model, device, max_cases=20)
 
-    import pandas as pd, json
-    results_df = pd.DataFrame(fail_results)
+    with open("ham10000/results/xai_targets_correct.json") as f:
+        correct_targets = json.load(f)
+    print("\n=== Grad-CAM on correct cases ===")
+    correct_results = run_gradcam_batch(
+        correct_targets, "ham10000/results/xai/gradcam/correct",
+        model, device, max_cases=20)
+
+    results_df = pd.DataFrame(fail_results + correct_results)
     results_df.to_csv(
         "ham10000/results/xai/gradcam_results.csv", index=False)
-    print(f"\nSaved {len(fail_results)} heatmaps")
+    print(f"\nSaved {len(fail_results)} failure + {len(correct_results)} correct heatmaps")
     print(f"Correct among failures: "
-          f"{results_df['correct'].sum()}/{len(results_df)}")
+          f"{sum(r['correct'] for r in fail_results)}/{len(fail_results)}")

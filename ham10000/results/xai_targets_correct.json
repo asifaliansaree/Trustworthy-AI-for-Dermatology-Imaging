@@ -1,0 +1,80 @@
+[
+  {
+    "image_id": "ISIC_0029726",
+    "true_label": "akiec",
+    "pred_label": "akiec",
+    "confidence": 0.997655987739563
+  },
+  {
+    "image_id": "ISIC_0025651",
+    "true_label": "akiec",
+    "pred_label": "akiec",
+    "confidence": 0.8879600167274475
+  },
+  {
+    "image_id": "ISIC_0032081",
+    "true_label": "akiec",
+    "pred_label": "akiec",
+    "confidence": 0.7976225018501282
+  },
+  {
+    "image_id": "ISIC_0026569",
+    "true_label": "bcc",
+    "pred_label": "bcc",
+    "confidence": 0.9998441934585571
+  },
+  {
+    "image_id": "ISIC_0031404",
+    "true_label": "bcc",
+    "pred_label": "bcc",
+    "confidence": 0.9948874115943909
+  },
+  {
+    "image_id": "ISIC_0028400",
+    "true_label": "bcc",
+    "pred_label": "bcc",
+    "confidence": 0.9771836996078491
+  },
+  {
+    "image_id": "ISIC_0031450",
+    "true_label": "bkl",
+    "pred_label": "bkl",
+    "confidence": 0.8747595548629761
+  },
+  {
+    "image_id": "ISIC_0026316",
+    "true_label": "mel",
+    "pred_label": "mel",
+    "confidence": 0.9145686030387878
+  },
+  {
+    "image_id": "ISIC_0027957",
+    "true_label": "mel",
+    "pred_label": "mel",
+    "confidence": 0.9113132357597351
+  },
+  {
+    "image_id": "ISIC_0029789",
+    "true_label": "mel",
+    "pred_label": "mel",
+    "confidence": 0.8970844745635986
+  },
+  {
+    "image_id": "ISIC_0031201",
+    "true_label": "vasc",
+    "pred_label": "vasc",
+    "confidence": 1.0
+  },
+  {
+    "image_id": "ISIC_0029439",
+    "true_label": "vasc",
+    "pred_label": "vasc",
+    "confidence": 0.9999998807907104
+  },
+  {
+    "image_id": "ISIC_0024669",
+    "true_label": "vasc",
+    "pred_label": "vasc",
+    "confidence": 0.9999998807907104
+  }
+]
