@@ -13,7 +13,7 @@ loss:
   alpha_mode: effective_num
   effective_num_beta: 0.99
   focal_gamma: 1.5
-  label_smoothing: 0.1            # from v12 (0.8162, best so far)
+  label_smoothing: 0.1
   class_counts:
   - 890
   - 5367
@@ -43,6 +43,5 @@ train:
   scheduler: cosine
   use_ema: true
   use_weighted_sampler: true
-  weight_decay: 0.0005            # from v11 (0.8133)
+  weight_decay: 0.0005
   best_metric_smoothing_window: 5
-  # backbone_lr_ratio intentionally omitted -- v13 showed this hurts (underfits the backbone)
