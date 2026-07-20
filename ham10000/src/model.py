@@ -1,6 +1,7 @@
 """
 DermaNet — configurable backbone for HAM10000 classification.
-Supported architectures: resnet18, efficientnet_b0, efficientnet_b1, efficientnet_v2_s
+Supported architectures: resnet18, resnet50, resnet101, densenet121,
+efficientnet_b0, efficientnet_b1, efficientnet_v2_s
 Supports optional metadata late-fusion and staged fine-tuning.
 """
 import torch
@@ -14,6 +15,21 @@ ARCH_REGISTRY = {
         models.resnet18,
         models.ResNet18_Weights.IMAGENET1K_V1,
         512,
+    ),
+    "resnet50": (
+        models.resnet50,
+        models.ResNet50_Weights.IMAGENET1K_V2,
+        2048,
+    ),
+    "resnet101": (
+        models.resnet101,
+        models.ResNet101_Weights.IMAGENET1K_V2,
+        2048,
+    ),
+    "densenet121": (
+        models.densenet121,
+        models.DenseNet121_Weights.IMAGENET1K_V1,
+        1024,
     ),
     "efficientnet_b0": (
         models.efficientnet_b0,
@@ -31,6 +47,10 @@ ARCH_REGISTRY = {
         1280,
     ),
 }
+
+# Architectures shaped like ResNet: Sequential ending in (avgpool, fc) --
+# strip the last child to get a pooled feature extractor.
+_RESNET_FAMILY = {"resnet18", "resnet50", "resnet101"}
 
 
 class DermaNet(nn.Module):
@@ -72,10 +92,13 @@ class DermaNet(nn.Module):
         backbone = builder(weights=weights_enum if pretrained else None)
 
         # Strip classifier head — keep only feature extractor
-        if arch == "resnet18":
+        if arch in _RESNET_FAMILY:
             self.backbone = nn.Sequential(*list(backbone.children())[:-1])
         else:
-            # EfficientNet variants: replace classifier with Identity
+            # EfficientNet / DenseNet variants: replace classifier with Identity.
+            # DenseNet's forward() does its own ReLU + adaptive pool internally
+            # before .classifier, so Identity-ing .classifier is sufficient --
+            # no extra pooling needed here, same as EfficientNet.
             backbone.classifier = nn.Identity()
             self.backbone = backbone
 
