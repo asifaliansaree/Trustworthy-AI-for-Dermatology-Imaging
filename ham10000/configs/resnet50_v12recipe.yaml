@@ -23,7 +23,7 @@ loss:
   - 86
   - 114
 model:
-  architecture: resnet50        # ONLY CHANGE vs the winning resnet18 recipe
+  architecture: resnet50
   dropout: 0.35
   freeze_epochs: 0
   metadata_dim: 0
