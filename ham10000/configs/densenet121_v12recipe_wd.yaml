@@ -1,0 +1,47 @@
+seed: 42
+data:
+  augment: true
+  data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
+  img_size: 224
+  num_workers: 2
+logging:
+  checkpoint_dir: ham10000/checkpoints/densenet121_v12recipe_wd
+  experiment_name: densenet121_v12recipe_wd
+  save_dir: experiments/densenet121_v12recipe_wd
+loss:
+  name: weighted_focal
+  alpha_mode: effective_num
+  effective_num_beta: 0.99
+  focal_gamma: 1.5
+  label_smoothing: 0.1
+  class_counts:
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
+model:
+  architecture: densenet121
+  dropout: 0.35
+  freeze_epochs: 0
+  metadata_dim: 0
+  num_classes: 7
+  pretrained: true
+output:
+  checkpoint_dir: ham10000/checkpoints/densenet121_v12recipe_wd
+train:
+  batch_size: 32
+  early_stopping_patience: 12
+  ema_decay: 0.999
+  epochs: 45
+  gradient_accumulation: 1
+  lr: 0.0001
+  lr_warmup_epochs: 3
+  max_grad_norm: 1.0
+  scheduler: cosine
+  use_ema: true
+  use_weighted_sampler: true
+  weight_decay: 0.0005            # ONLY CHANGE vs densenet121_v12recipe -- same fix that helped resnet18 (v11)
+  best_metric_smoothing_window: 5
