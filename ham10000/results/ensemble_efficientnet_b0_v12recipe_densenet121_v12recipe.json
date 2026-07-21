@@ -1,0 +1,16 @@
+{
+    "experiment": "ensemble_efficientnet_b0_v12recipe_densenet121_v12recipe",
+    "models": [
+        "efficientnet_b0_v12recipe",
+        "densenet121_v12recipe"
+    ],
+    "weights": [
+        0.65,
+        0.35
+    ],
+    "tta_passes": 1,
+    "balanced_accuracy": 0.7361652861655744,
+    "macro_f1": 0.7165957059775564,
+    "macro_auc": 0.9560342260891365,
+    "val_ce_loss": 0.5406852454758292
+}
