@@ -202,7 +202,11 @@ def main():
             )
 
         model = build_model(cfg).to(device)
-        ckpt = torch.load(ckpt_path, map_location=device)
+        # weights_only=False: PyTorch >=2.6 defaults to True, which rejects
+        # numpy scalar types (val_balanced_accuracy was saved as one). Safe
+        # here since these are checkpoints you trained and pushed yourself,
+        # not downloaded from a third party.
+        ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
         model.load_state_dict(ckpt["model_state_dict"])
         print(f"[{name}] loaded epoch {ckpt['epoch']}, "
               f"val_bal_acc={ckpt['val_balanced_accuracy']:.4f}")
