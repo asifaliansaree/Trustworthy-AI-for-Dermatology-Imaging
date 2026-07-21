@@ -43,5 +43,5 @@ train:
   scheduler: cosine
   use_ema: true
   use_weighted_sampler: true
-  weight_decay: 0.0005            # ONLY CHANGE vs densenet121_v12recipe -- same fix that helped resnet18 (v11)
+  weight_decay: 0.0005
   best_metric_smoothing_window: 5
