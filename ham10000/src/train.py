@@ -390,7 +390,13 @@ def main(config_path: str):
     ckpt_dir = cfg["output"]["checkpoint_dir"]
     log_dir  = os.path.join("ham10000", "experiments", experiment)
     os.makedirs(ckpt_dir, exist_ok=True)
-    os.makedirs(log_dir,  exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+
+    print("\n" + "=" * 60)
+    print("Checkpoint Directory :", os.path.abspath(ckpt_dir))
+    print("Log Directory        :", os.path.abspath(log_dir))
+    print("Checkpoint Exists    :", os.path.exists(ckpt_dir))
+    print("=" * 60)
 
     log_path   = os.path.join(log_dir, "training_log.csv")
     best_ckpt  = os.path.join(ckpt_dir, "best_model.pt")
@@ -499,6 +505,12 @@ def main(config_path: str):
         }
         torch.save(payload, last_ckpt)
 
+        if os.path.exists(last_ckpt):
+            size = os.path.getsize(last_ckpt) / (1024 * 1024)
+            print(f"✓ last_model.pt saved ({size:.2f} MB)")
+        else:
+            print("✗ ERROR: last_model.pt was NOT saved")
+
         # Smooth the metric used for "best" selection so a single lucky/unlucky
         # epoch (see the noisy zig-zag in earlier runs) can't get checkpointed
         # as best just because it happened to land on a spike.
@@ -507,19 +519,43 @@ def main(config_path: str):
         smoothed_val = sum(window) / len(window)
 
         if smoothed_val > best_val:
-            best_val   = smoothed_val
+            best_val = smoothed_val
             no_improve = 0
+
             torch.save(payload, best_ckpt)
-            print(f"  → New best (raw={val_bal_acc:.4f}, "
-                  f"smoothed={smoothed_val:.4f}), saved.")
+
+            if os.path.exists(best_ckpt):
+                size = os.path.getsize(best_ckpt) / (1024 * 1024)
+                print(f"✓ best_model.pt saved ({size:.2f} MB)")
+            else:
+                print("✗ ERROR: best_model.pt was NOT saved")
+
+            print("Checkpoint directory contents:")
+            print(os.listdir(ckpt_dir))
+
+            print(
+                f"  → New best (raw={val_bal_acc:.4f}, "
+                f"smoothed={smoothed_val:.4f}), saved."
+            )
         else:
             no_improve += 1
             if no_improve >= early_stop:
                 print(f"\nEarly stopping triggered at epoch {epoch}.")
                 break
 
-    print(f"\nBest val balanced accuracy (smoothed): {best_val:.4f}")
-    print(f"Checkpoints → {ckpt_dir}")
+    print("\n" + "=" * 60)
+    print(f"Best val balanced accuracy (smoothed): {best_val:.4f}")
+    print(f"Checkpoint directory: {os.path.abspath(ckpt_dir)}")
+
+    if os.path.exists(ckpt_dir):
+        print("\nSaved files:")
+        for f in os.listdir(ckpt_dir):
+            path = os.path.join(ckpt_dir, f)
+            print(f" - {f} ({os.path.getsize(path)/1024/1024:.2f} MB)")
+    else:
+        print("Checkpoint directory does not exist!")
+
+    print("=" * 60)
 
 
 if __name__ == "__main__":
