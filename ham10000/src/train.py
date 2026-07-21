@@ -496,9 +496,17 @@ def main(config_path: str):
                         round(lr_now, 6)])
 
         # Checkpointing
+        # ema_state_dict holds the actual weights val_bal_acc was measured
+        # on (ema.shadow, applied to `model` above then evaluated).
+        # model_state_dict holds the raw, still-training weights (restored
+        # via live_state above) — kept so training can resume / so a
+        # non-EMA run still saves something meaningful. Previously only
+        # model_state_dict was saved, so the EMA-evaluated accuracy in this
+        # same payload described weights that were never written to disk.
         payload = {
             "epoch":               epoch,
             "model_state_dict":    model.state_dict(),
+            "ema_state_dict":      ema.shadow.state_dict() if ema else None,
             "optimizer_state":     optimizer.state_dict(),
             "val_balanced_accuracy": val_bal_acc,
             "config":              cfg,
