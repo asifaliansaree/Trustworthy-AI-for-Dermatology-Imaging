@@ -11,7 +11,7 @@ logging:
 loss:
   name: weighted_focal
   alpha_mode: effective_num
-  effective_num_beta: 0.99        # gentler than v5's 0.999 -- see note 3 below
+  effective_num_beta: 0.99
   focal_gamma: 1.5
   class_counts:
   - 890
@@ -37,10 +37,10 @@ train:
   epochs: 45
   gradient_accumulation: 1
   lr: 0.0001
-  lr_warmup_epochs: 3             # new -- see note 2 below
+  lr_warmup_epochs: 3
   max_grad_norm: 1.0
   scheduler: cosine
   use_ema: true
-  use_weighted_sampler: true      # new -- see note 1 below
-  weight_decay: 0.0003            # nudged up from 0.0002 -- see note 4 below
-  best_metric_smoothing_window: 5 # new -- see note 5 below
+  use_weighted_sampler: true
+  weight_decay: 0.0003
+  best_metric_smoothing_window: 5
