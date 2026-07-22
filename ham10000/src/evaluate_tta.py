@@ -4,11 +4,15 @@ evaluate_tta.py — Test-Time Augmentation evaluator.
 Runs N augmented forward passes per test image and averages softmax outputs.
 Typically gains +1–3pp balanced accuracy with zero retraining.
 
-Usage:
+Usage (current best checkpoint — densenet121_v12recipe, val_bal_acc 0.8251):
     python ham10000/src/evaluate_tta.py \
-        --config     ham10000/configs/efficientnet_b0.yaml \
-        --checkpoint ham10000/checkpoints/efficientnet_b0/best_model.pt \
+        --config     ham10000/configs/densenet121_v12recipe.yaml \
+        --checkpoint ham10000/checkpoints/densenet121_v12recipe/best_model.pt \
         --tta_passes 8
+
+Optional (default batch_size/num_workers come from the config's
+train.batch_size / data.num_workers, same as train.py):
+        --batch_size 64 --num_workers 2
 """
 import os, sys, json, argparse
 import numpy as np
@@ -33,7 +37,12 @@ for p in [_THIS, _ROOT]:
 from model            import build_model
 from metadata_encoder import MetadataEncoder
 
-CLASSES    = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
+# Order must match CLASS_MAP's indices (0..6), not alphabetical order --
+# these feed target_names / per-class zips below, so a mismatch here
+# silently mislabels every per-class number while leaving the aggregate
+# scores (balanced accuracy, macro F1) correct, since those are computed
+# on the integer labels directly. Matches evaluate.py / evaluate_test.py.
+CLASSES    = ["mel", "nv", "bcc", "akiec", "bkl", "df", "vasc"]
 CLASS_MAP  = {"mel":0,"nv":1,"bcc":2,"akiec":3,"bkl":4,"df":5,"vasc":6}
 MEAN       = [0.485, 0.456, 0.406]
 STD        = [0.229, 0.224, 0.225]
@@ -94,14 +103,48 @@ class TestDataset(Dataset):
         return img, label
 
 
+class _TTAPassDataset(Dataset):
+    """
+    Applies one TTA transform pass over an underlying TestDataset and
+    returns already-transformed tensors, so a DataLoader can batch them.
+    Looks up the same image/meta/label as TestDataset.__getitem__ --
+    this is a thin wrapper, not a reimplementation of the dataset logic.
+    """
+
+    def __init__(self, base: "TestDataset", transform):
+        self.base      = base
+        self.transform = transform
+        self.use_meta  = base.encoder is not None
+
+    def __len__(self):
+        return len(self.base)
+
+    def __getitem__(self, idx):
+        item = self.base[idx]
+        if self.use_meta:
+            img, meta, label = item
+            return self.transform(img), meta, label
+        img, label = item
+        return self.transform(img), label
+
+
 @torch.no_grad()
 def run_tta(model, dataset, device, img_size,
-            n_passes: int, use_meta: bool):
+            n_passes: int, use_meta: bool,
+            batch_size: int = 32, num_workers: int = 0):
     """
     Run TTA inference.
     Pass 0 = deterministic base transform.
     Passes 1..n_passes = random augmentation.
     Final prediction = average of all pass softmax outputs.
+
+    Batched via DataLoader (shuffle=False) instead of one image at a time.
+    This changes nothing about the result: every image is still
+    transformed independently and probabilities are still accumulated
+    per original index -- it only changes how many images go through the
+    model per forward call, so it doesn't leave the GPU idle between
+    single-image calls. Passing batch_size=1 reproduces the exact
+    previous behavior.
     """
     model.eval()
     n = len(dataset)
@@ -111,22 +154,32 @@ def run_tta(model, dataset, device, img_size,
     for pass_idx in range(n_passes):
         transform = (base_transform(img_size) if pass_idx == 0
                      else tta_transform(img_size))
+        pass_dataset = _TTAPassDataset(dataset, transform)
+        loader = DataLoader(
+            pass_dataset, batch_size=batch_size, shuffle=False,
+            num_workers=num_workers, pin_memory=torch.cuda.is_available(),
+        )
         print(f"  TTA pass {pass_idx + 1}/{n_passes}...", end="\r")
 
-        for idx in range(n):
-            item = dataset[idx]
+        offset = 0
+        for batch in loader:
             if use_meta:
-                img, meta, label = item
-                meta_t = meta.unsqueeze(0).to(device)
+                imgs, meta, labels = batch
+                meta_t = meta.to(device)
             else:
-                img, label = item
+                imgs, labels = batch
                 meta_t = None
 
-            img_t  = transform(img).unsqueeze(0).to(device)
-            logits = model(img_t, meta_t)
-            probs  = F.softmax(logits, dim=1).cpu().numpy()[0]
-            accumulated[idx] += probs
-            all_labels[idx]   = label
+            imgs   = imgs.to(device)
+            logits = model(imgs, meta_t)
+            probs  = F.softmax(logits, dim=1).cpu().numpy()
+
+            bsz = probs.shape[0]
+            accumulated[offset:offset + bsz] += probs
+            # Labels are identical every pass -- only need to record them once.
+            if pass_idx == 0:
+                all_labels[offset:offset + bsz] = labels.numpy()
+            offset += bsz
 
     print()
     avg_probs  = accumulated / n_passes
@@ -139,19 +192,28 @@ def main():
     p.add_argument("--config",     required=True)
     p.add_argument("--checkpoint", required=True)
     p.add_argument("--tta_passes", type=int, default=8)
+    p.add_argument("--batch_size", type=int, default=None,
+                    help="Forward-pass batch size (default: cfg train.batch_size)")
+    p.add_argument("--num_workers", type=int, default=None,
+                    help="DataLoader workers (default: cfg data.num_workers)")
     args = p.parse_args()
 
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
-    device     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    use_meta   = cfg["model"].get("metadata_dim", 0) > 0
-    img_size   = cfg["data"].get("img_size", 224)
-    experiment = cfg["logging"]["experiment_name"]
+    device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_meta    = cfg["model"].get("metadata_dim", 0) > 0
+    img_size    = cfg["data"].get("img_size", 224)
+    experiment  = cfg["logging"]["experiment_name"]
+    batch_size  = (args.batch_size if args.batch_size is not None
+                   else cfg["train"].get("batch_size", 32))
+    num_workers = (args.num_workers if args.num_workers is not None
+                   else cfg["data"].get("num_workers", 0))
 
     print(f"\nExperiment  : {experiment}")
     print(f"Checkpoint  : {args.checkpoint}")
     print(f"TTA passes  : {args.tta_passes}")
+    print(f"Batch size  : {batch_size}")
     print(f"Metadata    : {use_meta}")
     print(f"Device      : {device}\n")
 
@@ -171,6 +233,7 @@ def main():
     y_true, y_pred, y_probs = run_tta(
         model, dataset, device, img_size,
         n_passes=args.tta_passes, use_meta=use_meta,
+        batch_size=batch_size, num_workers=num_workers,
     )
 
     bal_acc      = balanced_accuracy_score(y_true, y_pred)
