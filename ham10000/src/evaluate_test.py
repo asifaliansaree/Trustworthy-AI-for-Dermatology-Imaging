@@ -115,10 +115,12 @@ def main():
 
     # ── Model ─────────────────────────────────────────────────
     model = DermaNet(
-        num_classes=cfg["model"]["num_classes"],
-        metadata_dim=cfg["model"]["metadata_dim"],
-        pretrained=False,
-        dropout=cfg["model"]["dropout"],
+    num_classes=cfg["model"]["num_classes"],
+    metadata_dim=cfg["model"]["metadata_dim"],
+    pretrained=False,
+    arch=cfg["model"]["architecture"],
+    dropout=cfg["model"]["dropout"],
+    freeze_epochs=cfg["model"]["freeze_epochs"],
     ).to(device)
 
     ckpt = torch.load(
