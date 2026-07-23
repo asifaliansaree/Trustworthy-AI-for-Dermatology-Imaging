@@ -1,0 +1,17 @@
+Experiment : densenet121_v12recipe
+Checkpoint : /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/checkpoints/densenet121_v12recipe/best_model.pt
+Split      : test
+
+              precision    recall  f1-score   support
+
+         mel     0.4459    0.6250    0.5204       112
+          nv     0.9295    0.8458    0.8857       655
+         bcc     0.6207    0.8182    0.7059        44
+       akiec     0.6000    0.6585    0.6279        41
+         bkl     0.6538    0.6018    0.6267       113
+          df     0.4444    0.4444    0.4444         9
+        vasc     0.7000    0.9333    0.8000        15
+
+    accuracy                         0.7816       989
+   macro avg     0.6278    0.7039    0.6587       989
+weighted avg     0.8080    0.7816    0.7907       989

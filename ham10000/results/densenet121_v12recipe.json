@@ -1,0 +1,18 @@
+{
+    "experiment": "densenet121_v12recipe",
+    "checkpoint": "/kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/checkpoints/densenet121_v12recipe/best_model.pt",
+    "split": "test",
+    "epoch": 19,
+    "balanced_accuracy": 0.7038668027924903,
+    "macro_f1": 0.6587284897465266,
+    "macro_auc": 0.9507125020190367,
+    "per_class_f1": {
+        "mel": 0.5204,
+        "nv": 0.8857,
+        "bcc": 0.7059,
+        "akiec": 0.6279,
+        "bkl": 0.6267,
+        "df": 0.4444,
+        "vasc": 0.8
+    }
+}
