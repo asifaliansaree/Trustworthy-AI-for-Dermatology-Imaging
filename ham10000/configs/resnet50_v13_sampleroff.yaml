@@ -1,0 +1,64 @@
+# resnet50_v13_sampler_off.yaml
+#
+# Isolation test: identical to resnet50_v12recipe.yaml (test_bal_acc 0.7496)
+# with ONE change -- use_weighted_sampler: false.
+#
+# Why: this config previously combined use_weighted_sampler: true with
+# loss.alpha_mode: effective_num. That's the exact "two mechanisms fight
+# each other" pattern already diagnosed on resnet18 (WeightedRandomSampler
+# + effective_num focal loss double-corrects for class imbalance and
+# degrades performance). This run isolates just that variable -- nothing
+# else changes -- so a clean before/after comparison against the existing
+# resnet50_v12recipe checkpoint tells you if the same bug is costing
+# accuracy on ResNet-50 too.
+#
+# Run this BEFORE the focal-loss swap (resnet50_v13_focal.yaml) so the two
+# changes aren't conflated in one result.
+
+seed: 42
+data:
+  augment: true
+  data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
+  img_size: 224
+  num_workers: 2
+logging:
+  checkpoint_dir: ham10000/checkpoints/resnet50_v13_sampler_off
+  experiment_name: resnet50_v13_sampler_off
+  save_dir: experiments/resnet50_v13_sampler_off
+loss:
+  name: weighted_focal
+  alpha_mode: effective_num
+  effective_num_beta: 0.99
+  focal_gamma: 1.5
+  label_smoothing: 0.1
+  class_counts:
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
+model:
+  architecture: resnet50
+  dropout: 0.35
+  freeze_epochs: 0
+  metadata_dim: 0
+  num_classes: 7
+  pretrained: true
+output:
+  checkpoint_dir: ham10000/checkpoints/resnet50_v13_sampler_off
+train:
+  batch_size: 32
+  early_stopping_patience: 12
+  ema_decay: 0.999
+  epochs: 45
+  gradient_accumulation: 1
+  lr: 0.0001
+  lr_warmup_epochs: 3
+  max_grad_norm: 1.0
+  scheduler: cosine
+  use_ema: true
+  use_weighted_sampler: false   # <-- only change from resnet50_v12recipe.yaml
+  weight_decay: 0.0003
+  best_metric_smoothing_window: 5

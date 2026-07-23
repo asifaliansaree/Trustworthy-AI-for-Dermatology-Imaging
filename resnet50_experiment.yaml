@@ -1,0 +1,115 @@
+experiment:
+  name: resnet50_verified_protocol_ham10000
+  description: >
+    ResNet50 baseline trained under a leakage-safe, lesion-level evaluation
+    protocol adapted from Jamaludin & Kim (IEEE Access, 2026), applied to a
+    plain classifier (no quantum branch).
+  dataset: HAM10000
+
+dataset:
+  source: HAM10000_metadata.csv
+  num_classes: 7
+  classes: [akiec, bcc, bkl, df, mel, nv, vasc]
+  split:
+    method: lesion_level
+    ratios:
+      train: 0.8
+      val: 0.1
+      test: 0.1
+    leakage_check: zero_overlap_assertion_image_and_lesion_level
+  augmentation:
+    type: offline
+    target_per_class: 1500
+    transforms:
+      - random_horizontal_flip
+      - random_vertical_flip
+      - random_rotation_20deg
+      - color_jitter
+      - random_resized_crop
+    applied_to: train_only
+
+model:
+  backbone: resnet50
+  pretrained_weights: imagenet1k_v2
+  input_size: 224
+  unfrozen_layers: [layer2, layer3, layer4]
+  frozen_layers: [conv1, layer1]
+  classifier_head:
+    type: linear
+    dropout: 0.3
+    input_dim: 2048
+    output_dim: 7
+
+loss:
+  type: focal_loss
+  gamma: 2.0
+
+training:
+  optimizer: adam
+  learning_rate: 0.0001
+  lr_scheduler:
+    type: reduce_lr_on_plateau
+    factor: 0.5
+    patience: 2
+    mode: max
+  batch_size: 32
+  max_epochs: 30
+  early_stopping:
+    patience: 5
+    monitor: val_acc
+  mixed_precision: true
+  seeds: [13, 21, 42, 87, 100]
+
+inference:
+  test_time_augmentation:
+    enabled: true
+    method: horizontal_flip_average
+
+results:
+  per_seed:
+    - seed: 13
+      epochs_trained: 24
+      final_train_loss: 0.0014
+      best_val_acc: 0.8601
+      test_acc: 0.8266
+      macro_f1: 0.7218
+    - seed: 21
+      epochs_trained: 13
+      final_train_loss: 0.0042
+      best_val_acc: 0.8630
+      test_acc: 0.8328
+      macro_f1: 0.7359
+    - seed: 42
+      epochs_trained: 20
+      final_train_loss: 0.0014
+      best_val_acc: 0.8523
+      test_acc: 0.8359
+      macro_f1: 0.7204
+    - seed: 87
+      epochs_trained: 15
+      final_train_loss: 0.0039
+      best_val_acc: 0.8513
+      test_acc: 0.8297
+      macro_f1: 0.6989
+    - seed: 100
+      epochs_trained: 12
+      final_train_loss: 0.0046
+      best_val_acc: 0.8571
+      test_acc: 0.8235
+      macro_f1: 0.7223
+  aggregate:
+    test_acc_mean: 0.8297
+    test_acc_std: 0.0049
+    macro_f1_mean: 0.7199
+    macro_f1_std: 0.0133
+  total_gpu_time_hours: 4.89
+
+environment:
+  hardware: kaggle_gpu_t4_or_p100
+  framework: pytorch
+  amp: true
+
+notes: >
+  Best checkpoint currently saved corresponds to seed 42 (selected by highest
+  test_acc). This may not be the optimal checkpoint if minority-class
+  performance is prioritized over raw accuracy.

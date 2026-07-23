@@ -70,6 +70,26 @@ def base_transform(img_size: int) -> T.Compose:
     ])
 
 
+def flip_transform(img_size: int) -> T.Compose:
+    """
+    Deterministic horizontal-flip pass for flip-only TTA.
+    Same resize/center-crop geometry as base_transform -- the ONLY
+    difference is a horizontal flip. No RandomResizedCrop, no scale
+    jitter, no ColorJitter. This is deliberately not the same
+    transform as tta_transform(): that one resamples geometry/color
+    randomly every pass and is known (per densenet121_v12recipe TTA
+    results) to hurt small/off-center lesions. This one only mirrors
+    the image, so it can't introduce crop/scale distortion.
+    """
+    return T.Compose([
+        T.Resize(int(img_size * 1.14)),
+        T.CenterCrop(img_size),
+        T.RandomHorizontalFlip(p=1.0),  # always flip, deterministic
+        T.ToTensor(),
+        T.Normalize(mean=MEAN, std=STD),
+    ])
+
+
 class TestDataset(Dataset):
     """Minimal test dataset that returns raw PIL images for TTA."""
 
@@ -131,11 +151,24 @@ class _TTAPassDataset(Dataset):
 @torch.no_grad()
 def run_tta(model, dataset, device, img_size,
             n_passes: int, use_meta: bool,
-            batch_size: int = 32, num_workers: int = 0):
+            batch_size: int = 32, num_workers: int = 0,
+            tta_mode: str = "random"):
     """
     Run TTA inference.
-    Pass 0 = deterministic base transform.
-    Passes 1..n_passes = random augmentation.
+
+    tta_mode="random" (original behavior):
+        Pass 0 = deterministic base transform.
+        Passes 1..n_passes = RandomResizedCrop + flip + ColorJitter.
+        n_passes is whatever the caller asks for.
+
+    tta_mode="flip" (new, gentler):
+        Exactly 2 deterministic passes, n_passes is ignored:
+        Pass 0 = base_transform (center crop, no flip).
+        Pass 1 = flip_transform (same center crop, horizontal flip only).
+        No RandomResizedCrop, no scale/color jitter -- avoids the
+        crop/scale distortion that hurt small/off-center lesions in
+        the random-mode TTA run on densenet121_v12recipe.
+
     Final prediction = average of all pass softmax outputs.
 
     Batched via DataLoader (shuffle=False) instead of one image at a time.
@@ -151,15 +184,27 @@ def run_tta(model, dataset, device, img_size,
     accumulated = np.zeros((n, len(CLASSES)), dtype=np.float64)
     all_labels  = np.zeros(n, dtype=np.int64)
 
+    if tta_mode == "flip":
+        n_passes = 2  # base + single flip, always -- ignores --tta_passes
+    elif tta_mode != "random":
+        raise ValueError(f"Unknown tta_mode '{tta_mode}'. Choose: random | flip")
+
     for pass_idx in range(n_passes):
-        transform = (base_transform(img_size) if pass_idx == 0
-                     else tta_transform(img_size))
+        if tta_mode == "flip":
+            transform = base_transform(img_size) if pass_idx == 0 else flip_transform(img_size)
+        else:
+            transform = (base_transform(img_size) if pass_idx == 0
+                         else tta_transform(img_size))
         pass_dataset = _TTAPassDataset(dataset, transform)
         loader = DataLoader(
             pass_dataset, batch_size=batch_size, shuffle=False,
             num_workers=num_workers, pin_memory=torch.cuda.is_available(),
         )
-        print(f"  TTA pass {pass_idx + 1}/{n_passes}...", end="\r")
+        pass_label = (
+            ("base" if pass_idx == 0 else "hflip") if tta_mode == "flip"
+            else str(pass_idx + 1)
+        )
+        print(f"  TTA pass {pass_label} ({pass_idx + 1}/{n_passes})...", end="\r")
 
         offset = 0
         for batch in loader:
@@ -191,7 +236,13 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--config",     required=True)
     p.add_argument("--checkpoint", required=True)
-    p.add_argument("--tta_passes", type=int, default=8)
+    p.add_argument("--tta_passes", type=int, default=8,
+                    help="Number of augmented passes (ignored when --tta_mode flip, "
+                         "which always runs exactly 2 deterministic passes)")
+    p.add_argument("--tta_mode", choices=["random", "flip"], default="random",
+                    help="random = original RandomResizedCrop+flip+ColorJitter TTA "
+                         "(default, unchanged). flip = gentler 2-pass base+hflip-only "
+                         "TTA, no crop/scale/color distortion.")
     p.add_argument("--batch_size", type=int, default=None,
                     help="Forward-pass batch size (default: cfg train.batch_size)")
     p.add_argument("--num_workers", type=int, default=None,
@@ -210,9 +261,13 @@ def main():
     num_workers = (args.num_workers if args.num_workers is not None
                    else cfg["data"].get("num_workers", 0))
 
+    effective_passes = 2 if args.tta_mode == "flip" else args.tta_passes
+
     print(f"\nExperiment  : {experiment}")
     print(f"Checkpoint  : {args.checkpoint}")
-    print(f"TTA passes  : {args.tta_passes}")
+    print(f"TTA mode    : {args.tta_mode}")
+    print(f"TTA passes  : {effective_passes}"
+          + (" (fixed: base + hflip)" if args.tta_mode == "flip" else ""))
     print(f"Batch size  : {batch_size}")
     print(f"Metadata    : {use_meta}")
     print(f"Device      : {device}\n")
@@ -238,6 +293,7 @@ def main():
         model, dataset, device, img_size,
         n_passes=args.tta_passes, use_meta=use_meta,
         batch_size=batch_size, num_workers=num_workers,
+        tta_mode=args.tta_mode,
     )
 
     bal_acc      = balanced_accuracy_score(y_true, y_pred)
@@ -255,7 +311,7 @@ def main():
     )
 
     print("=" * 60)
-    print(f"TTA RESULTS ({args.tta_passes} passes) — {experiment}")
+    print(f"TTA RESULTS ({args.tta_mode}, {effective_passes} passes) — {experiment}")
     print("=" * 60)
     print(f"Balanced Accuracy : {bal_acc:.4f}")
     print(f"Macro F1          : {macro_f1:.4f}")
@@ -267,11 +323,13 @@ def main():
     print(f"\n{report}")
 
     os.makedirs("ham10000/results", exist_ok=True)
-    out_name = f"{experiment}_tta{args.tta_passes}"
+    mode_tag = "flip" if args.tta_mode == "flip" else f"random{args.tta_passes}"
+    out_name = f"{experiment}_tta_{mode_tag}"
     results  = {
         "experiment":       out_name,
         "checkpoint":       args.checkpoint,
-        "tta_passes":       args.tta_passes,
+        "tta_mode":         args.tta_mode,
+        "tta_passes":       effective_passes,
         "balanced_accuracy": float(bal_acc),
         "macro_f1":         float(macro_f1),
         "macro_auc":        float(auc),
