@@ -115,19 +115,13 @@ def main():
 
     # ── Model ─────────────────────────────────────────────────
     model = DermaNet(
-    num_classes=cfg["model"]["num_classes"],
-    metadata_dim=cfg["model"]["metadata_dim"],
-    pretrained=False,
-    arch=cfg["model"]["architecture"],
-    dropout=cfg["model"]["dropout"],
-    freeze_epochs=cfg["model"]["freeze_epochs"],
+        num_classes=cfg["model"]["num_classes"],
+        metadata_dim=cfg["model"]["metadata_dim"],
+        pretrained=False,
+        dropout=cfg["model"]["dropout"],
     ).to(device)
 
-    ckpt = torch.load(
-    args.checkpoint,
-    map_location=device,
-    weights_only=False
-     )
+    ckpt = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(ckpt["model_state_dict"])
     print(f"Checkpoint loaded  (epoch {ckpt['epoch']}, "
           f"val_bal_acc={ckpt['val_balanced_accuracy']:.4f})\n")
@@ -204,6 +198,20 @@ def main():
 
     print(f"\nSaved results → {json_path}")
     print(f"Saved report  → {report_path}")
+
+    # ── Save per-image probabilities (additive only — existing JSON/report
+    #    above are unchanged; this is data run_inference already computed
+    #    in memory but previously discarded, needed for threshold/calibration
+    #    analysis without re-running inference) ──────────────────────────
+    probs_path = f"ham10000/results/{experiment}_probs.npz"
+    np.savez(
+        probs_path,
+        y_true=y_true,
+        y_pred=y_pred,
+        y_probs=y_probs,
+        classes=np.array(CLASSES),
+    )
+    print(f"Saved probabilities → {probs_path}  (y_true, y_pred, y_probs, classes)")
 
 
 if __name__ == "__main__":
