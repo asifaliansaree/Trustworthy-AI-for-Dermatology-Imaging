@@ -121,12 +121,13 @@ def main():
     dropout=cfg["model"].get("dropout", 0.3),
     arch=cfg["model"]["architecture"],          # <-- ADD THIS
     freeze_epochs=cfg["model"].get("freeze_epochs", 0),
-    ).to(device)
+).to(device)
 
     ckpt = torch.load(
     args.checkpoint,
     map_location=device,
-    weights_only=False,)
+    weights_only=False,
+    )
     model.load_state_dict(ckpt["model_state_dict"])
     print(f"Checkpoint loaded  (epoch {ckpt['epoch']}, "
           f"val_bal_acc={ckpt['val_balanced_accuracy']:.4f})\n")
@@ -208,7 +209,7 @@ def main():
     #    above are unchanged; this is data run_inference already computed
     #    in memory but previously discarded, needed for threshold/calibration
     #    analysis without re-running inference) ──────────────────────────
-    probs_path = f"ham10000/results/{experiment}_probs.npz"
+    probs_path = f"ham10000/results/{experiment}_{args.split}_probs.npz"
     np.savez(
         probs_path,
         y_true=y_true,
