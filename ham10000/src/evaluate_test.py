@@ -121,7 +121,10 @@ def main():
         dropout=cfg["model"]["dropout"],
     ).to(device)
 
-    ckpt = torch.load(args.checkpoint, map_location=device)
+    ckpt = torch.load(
+    args.checkpoint,
+    map_location=device,
+    weights_only=False,)
     model.load_state_dict(ckpt["model_state_dict"])
     print(f"Checkpoint loaded  (epoch {ckpt['epoch']}, "
           f"val_bal_acc={ckpt['val_balanced_accuracy']:.4f})\n")
