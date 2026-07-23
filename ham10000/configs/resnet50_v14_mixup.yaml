@@ -1,0 +1,90 @@
+# resnet50_v14_mixup.yaml
+#
+# Base: resnet50_v12recipe.yaml, your current best (test_bal_acc 0.7496,
+# mel recall 0.8036, val->test gap only 6.9pp -- best generalization of
+# any config tried so far).
+#
+# ONE change from v12recipe: mixup_alpha: 0.2 (was 0.0 / off).
+#
+# Why this and nothing else:
+#   - use_weighted_sampler stays TRUE. You already ran the controlled
+#     test (resnet50_v13_sampler_off) proving that turning it off costs
+#     25pp of melanoma recall (0.8036 -> 0.5536) and 19.5pp on akiec.
+#     Removing it again would undo your best result for no proven gain.
+#   - loss (weighted_focal / effective_num / gamma=1.5) stays as-is.
+#     Never validated a replacement on this recipe -- not swapping it
+#     speculatively on your best model.
+#   - effective_num_beta stays 0.99 (already gentler than the code's own
+#     default of 0.999) -- df/vasc recall are already reasonable here,
+#     no evidence pushing beta further would help.
+#
+# mixup_alpha=0.2 is the one new, well-justified addition: train.py's own
+# docstring (build_model -> train_one_epoch, mixup_alpha) explains this
+# is the direct fix for the weighted sampler forcing df (86 train images)
+# and vasc (114 train images) into every batch -- without mixup the model
+# can memorize those exact pixels; mixup blends each image with a random
+# other image in the batch so it never sees identical pixels twice, while
+# the sampler still controls how OFTEN rare classes contribute gradient.
+# This is the one mechanism in your codebase that's documented to
+# complement the sampler rather than fight it (contrast with effective_num
+# + sampler, which you've already shown DO fight each other).
+#
+# alpha=0.2 is the standard mild setting from Zhang et al. (2018) for
+# fine-grained/medical-style tasks -- strong enough to break exact-pixel
+# memorization, mild enough not to blur lesion boundaries into mush for
+# a 7-way classification task where texture/border detail matters.
+#
+# Test in isolation (single seed=42, same as v12recipe) so this is a
+# clean before/after on exactly one variable. If it helps (mel recall
+# and/or val->test gap improve without hurting test_bal_acc), THEN run
+# the multi-seed (13/21/42/87/100) sweep on this config for the paper
+# table. If it doesn't help, you've lost one run, not your best model.
+
+seed: 42
+data:
+  augment: true
+  data_dir: /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/data
+  img_size: 224
+  num_workers: 2
+logging:
+  checkpoint_dir: ham10000/checkpoints/resnet50_v14_mixup
+  experiment_name: resnet50_v14_mixup
+  save_dir: experiments/resnet50_v14_mixup
+loss:
+  name: weighted_focal
+  alpha_mode: effective_num
+  effective_num_beta: 0.99
+  focal_gamma: 1.5
+  label_smoothing: 0.1
+  class_counts:
+  - 890
+  - 5367
+  - 412
+  - 257
+  - 891
+  - 86
+  - 114
+model:
+  architecture: resnet50
+  dropout: 0.35
+  freeze_epochs: 0
+  metadata_dim: 0
+  num_classes: 7
+  pretrained: true
+output:
+  checkpoint_dir: ham10000/checkpoints/resnet50_v14_mixup
+train:
+  batch_size: 32
+  early_stopping_patience: 12
+  ema_decay: 0.999
+  epochs: 45
+  gradient_accumulation: 1
+  lr: 0.0001
+  lr_warmup_epochs: 3
+  max_grad_norm: 1.0
+  scheduler: cosine
+  use_ema: true
+  use_weighted_sampler: true
+  weight_decay: 0.0003
+  best_metric_smoothing_window: 5
+  mixup_alpha: 0.2   # <-- only change from resnet50_v12recipe.yaml
