@@ -1,0 +1,17 @@
+Experiment : resnet50_v13_sampler_off
+Checkpoint : /kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/checkpoints/resnet50_v13_sampler_off/best_model.pt
+Split      : test
+
+              precision    recall  f1-score   support
+
+         mel     0.6739    0.5536    0.6078       112
+          nv     0.8934    0.9466    0.9192       655
+         bcc     0.6731    0.7955    0.7292        44
+       akiec     0.6098    0.6098    0.6098        41
+         bkl     0.8125    0.5752    0.6736       113
+          df     0.3846    0.5556    0.4545         9
+        vasc     0.6471    0.7333    0.6875        15
+
+    accuracy                         0.8322       989
+   macro avg     0.6706    0.6814    0.6688       989
+weighted avg     0.8294    0.8322    0.8269       989
