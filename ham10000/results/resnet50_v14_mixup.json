@@ -1,0 +1,18 @@
+{
+    "experiment": "resnet50_v14_mixup",
+    "checkpoint": "/kaggle/working/Trustworthy-AI-for-Dermatology-Imaging/ham10000/checkpoints/resnet50_v14_mixup/best_model.pt",
+    "split": "test",
+    "epoch": 15,
+    "balanced_accuracy": 0.7317865270186917,
+    "macro_f1": 0.6557976305764309,
+    "macro_auc": 0.923142001552597,
+    "per_class_f1": {
+        "mel": 0.5911,
+        "nv": 0.8964,
+        "bcc": 0.6916,
+        "akiec": 0.5778,
+        "bkl": 0.6491,
+        "df": 0.3846,
+        "vasc": 0.8
+    }
+}
