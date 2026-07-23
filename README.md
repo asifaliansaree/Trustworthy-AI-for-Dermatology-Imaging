@@ -19,7 +19,7 @@ Build a rigorous, reproducible skin-lesion classifier on HAM10000, then apply st
 | 5 | Attribution benchmark — Integrated Gradients, saliency, occlusion, unified comparison harness ✅ complete |
 | 6 | Mask-overlap evaluation against ISIC lesion masks (IoU, pointing game) ← next |
 
-> Running alongside Weeks 4–5: a parallel ResNet-18 tuning effort pushed the trained model from val_bal_acc 0.7964 to **0.8120** (`resnet18_v6_ema_sampler`). See [Parallel Track — Baseline Strengthening](#parallel-track--baseline-strengthening-post-lock-model-iteration) below.
+> Running alongside Weeks 4–5: a parallel tuning effort explored 6 architectures under a shared recipe (EMA + weighted sampler + effective-number loss). The highest **val**_bal_acc was `densenet121_v12recipe` at 0.8251, but test-set verification (see [Parallel Track](#parallel-track--baseline-strengthening-post-lock-model-iteration) below) showed val_bal_acc did not reliably predict test performance across architectures. The current best **test**-verified model is **`resnet50_v12recipe`, test_bal_acc = 0.7496**.
 
 ---
 
@@ -128,7 +128,24 @@ Digging into why stacking these mechanisms hurt rather than helped led to two fi
 | `resnet18_v9_sampler_restore` | 0.7725 | 39 | Reverted toward v8-style sampling — no improvement |
 | `resnet18_v9_tuned` / `v10` | 0.8023 / 0.8023 | 22 / 22 | Back to EMA without sampler — stable but below v6 |
 
-**Current best: `resnet18_v6_ema_sampler` at val_bal_acc = 0.8120**, combining EMA, a weighted sampler, gentler effective-number class balancing, and LR warmup — above the 0.81+ target. Everything from `v7` onward has been an attempt to push past 0.812 by adding mixup and re-tuning the sampler, without success yet; the mixup runs in particular consistently underperformed the non-mixup configs.
+**Highest val_bal_acc in the sweep: `densenet121_v12recipe` at 0.8251** (epoch 17 raw; checkpointed epoch corresponds to 0.8148 due to `best_metric_smoothing_window=5`), combining EMA, a weighted sampler, gentler effective-number class balancing, and LR warmup. Everything from `v7` onward on the ResNet-18 line was an attempt to push further with mixup and re-tuned sampling, without success; those runs consistently underperformed the non-mixup configs. **However, val_bal_acc alone is not a reliable stopping point — see the test-set verification below, which changes which model is actually "best."**
+
+## Test-Set Verification of the Parallel Track
+
+The tuning journey above was driven entirely by `val_bal_acc` on a fixed validation split, checkpoint-selected the same way every time. That is exactly the setup where repeated hyperparameter search can overfit to one validation split without it showing up in the metric being optimized. To check, the three architectures with the highest val scores were evaluated on the held-out test set (touched once each, no TTA, no cherry-picking across seeds):
+
+| Config | val_bal_acc | **test_bal_acc** | test macro F1 | val→test gap |
+|---|---|---|---|---|
+| `densenet121_v12recipe` | 0.8148–0.8251 | 0.7039 | 0.6587 | −11 to −12pp |
+| `resnet18_v6_ema_sampler` | 0.8120 | 0.7064 | 0.6838 | −10.6pp |
+| `resnet50_v12recipe` | 0.8010 | **0.7496** | 0.6484 | −5.1pp |
+| *(reference)* Week 3 `v0.1-baseline` | 0.7964 | 0.7318 | 0.6869 | −6.5pp |
+
+**Takeaway: the model with the highest val score (`densenet121_v12recipe`) is actually the weakest on test, and the model with the lowest val score of the three (`resnet50_v12recipe`) is the strongest on test.** Ranking architectures by val_bal_acc alone would have picked the wrong model. `resnet50_v12recipe` is now the current-best, test-verified checkpoint — it also modestly beats the original Week 3 baseline on test balanced accuracy, though not on macro F1 or per-class F1 uniformly.
+
+Test-Time Augmentation (`evaluate_tta.py`, 8 passes) was tried on `densenet121_v12recipe` and made things worse (0.7039 → 0.6844 balanced accuracy), likely due to the random-resized-crop scale interacting badly with small/off-center lesions in the already-weak `mel`/`df` classes. **TTA is not adopted.**
+
+Across all three test-verified models, `mel`, `df`, and `bkl` remain the weakest classes (F1 roughly 0.44–0.60 depending on model/class), consistent with the Week 3 finding that these are dataset-size- and boundary-confusion-driven, not architecture-driven — no backbone swap so far has fixed them.
 
 ---
 
