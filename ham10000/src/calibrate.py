@@ -108,6 +108,26 @@ def main():
     classes = val_classes
     n_classes = len(classes)
 
+    # Hard safety check: refuse to proceed if val and test are actually the
+    # same data (e.g. both args accidentally point at the same file). This
+    # exists because that mistake silently reproduces test-set-fit numbers
+    # while still printing "val" labels -- exactly the leakage this script
+    # is meant to prevent.
+    same_shape = val["y_true"].shape == test["y_true"].shape
+    if same_shape and np.array_equal(val["y_true"], test["y_true"]) \
+            and np.allclose(val["y_probs"], test["y_probs"]):
+        raise SystemExit(
+            "ERROR: --val_probs and --test_probs contain identical data.\n"
+            "This almost always means both flags point at the same file "
+            "(or the same split was saved twice under different names).\n"
+            f"  val_probs  : {args.val_probs}  ({len(val['y_true'])} images)\n"
+            f"  test_probs : {args.test_probs}  ({len(test['y_true'])} images)\n"
+            "Refusing to calibrate -- fitting and evaluating on the same "
+            "data defeats the entire point of this script. Re-check that "
+            "val_probs was saved from --split val and test_probs from "
+            "--split test."
+        )
+
     print(f"\nVal set  : {len(val['y_true'])} images")
     print(f"Test set : {len(test['y_true'])} images")
     print(f"Classes  : {classes}\n")
