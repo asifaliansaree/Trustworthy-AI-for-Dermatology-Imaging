@@ -1,3 +1,4 @@
+# ham10000/results/select_week4_targets.py
 """
 Week 4 target selection - fixes two gaps in xai_target_cases.json:
 
@@ -30,12 +31,12 @@ for p in [_SRC, _ROOT]:
     if p not in sys.path:
         sys.path.insert(0, os.path.abspath(p))
 
-from model import DermaNet
+from model import build_model
 from dataset import HAM10000Dataset
 
 CLASSES   = ['akiec', 'bcc', 'bkl', 'df', 'mel', 'nv', 'vasc']
-CFG_PATH  = 'ham10000/configs/baseline.yaml'
-CKPT_PATH = 'ham10000/checkpoints/baseline_image_only/best_model_remapped.pt'
+CFG_PATH  = 'ham10000/configs/resnet50_v12recipe.yaml'
+CKPT_PATH = 'ham10000/checkpoints/resnet50_v12recipe/best_model.pt'
 CSV_PATH  = 'ham10000/data/HAM10000_split.csv'
 
 N_CORRECT_PER_CLASS = 3   # -> up to 21 correct examples, same order of
@@ -45,10 +46,11 @@ with open(CFG_PATH) as f:
     cfg = yaml.safe_load(f)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = DermaNet(
-    num_classes=7, metadata_dim=0,
-    pretrained=False, dropout=cfg['model']['dropout'],
-).to(device)
+# We're about to load a fully-trained checkpoint, so skip the ImageNet
+# download build_model() would otherwise trigger via cfg['model']['pretrained'].
+cfg['model']['pretrained'] = False
+model = build_model(cfg).to(device)
+print("Architecture:", cfg['model']['architecture'])
 ckpt = torch.load(CKPT_PATH, map_location=device)
 print("Loaded checkpoint from:", CKPT_PATH)
 print("First 5 state_dict keys:", list(ckpt['model_state_dict'].keys())[:5])

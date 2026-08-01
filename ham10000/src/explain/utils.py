@@ -106,8 +106,8 @@ def remap_resnet_backbone_keys(state_dict: dict) -> dict:
     return remapped
 
 def load_model_and_config(
-    ckpt_path="ham10000/checkpoints/baseline_image_only/best_model.pt",
-    cfg_path ="ham10000/configs/baseline.yaml",
+    ckpt_path="ham10000/checkpoints/resnet50_v12recipe/best_model.pt",
+    cfg_path ="ham10000/configs/resnet50_v12recipe.yaml",
 ):
     from model import DermaNet
     with open(cfg_path) as f:

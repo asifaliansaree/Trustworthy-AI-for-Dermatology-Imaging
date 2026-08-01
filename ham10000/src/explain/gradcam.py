@@ -18,13 +18,22 @@ from utils import (normalize_attr, overlay_on_image,
                    load_xai_targets, CLASSES)
 
 def get_target_layer(model):
-    """Last conv layer in ResNet-18 = layer4[-1].conv2
+    """Last conv layer before the residual add in the final block of layer4.
 
     backbone = nn.Sequential(conv1, bn1, relu, maxpool,
                               layer1, layer2, layer3, layer4, avgpool)
     avgpool is index -1, so layer4 is index -2 (NOT -3 - that's layer3).
+    This holds for every ResNet variant in ARCH_REGISTRY, since model.py
+    strips the same 9-item top-level structure regardless of block type.
+
+    Block type differs by depth, though:
+      - BasicBlock  (resnet18, resnet34):  conv1, conv2        -> conv2 is last
+      - Bottleneck  (resnet50, resnet101): conv1, conv2, conv3 -> conv3 is last
+    Detect via hasattr instead of hardcoding the arch name, so this stays
+    correct if ARCH_REGISTRY grows more variants later.
     """
-    return model.backbone[-2][-1].conv2
+    last_block = model.backbone[-2][-1]
+    return last_block.conv3 if hasattr(last_block, "conv3") else last_block.conv2
 
 def compute_gradcam(model, tensor, target_class, device):
     model.eval()

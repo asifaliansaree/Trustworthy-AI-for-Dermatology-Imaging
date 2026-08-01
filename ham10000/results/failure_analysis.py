@@ -1,3 +1,4 @@
+# ham10000/results/failure_analysis.py
 import os, sys , json
 import numpy as np
 import torch
@@ -18,15 +19,15 @@ for p in [_SRC, _ROOT]:
     if p not in sys.path:
         sys.path.insert(0, os.path.abspath(p))
 
-from model import DermaNet
+from model import build_model
 from dataset import HAM10000Dataset
 
 CLASSES = ['akiec','bcc','bkl','df','mel','nv','vasc']
 OUT     = 'ham10000/results/figures'
 os.makedirs(OUT, exist_ok=True)
 
-CFG_PATH  = 'ham10000/configs/baseline.yaml'
-CKPT_PATH = 'ham10000/checkpoints/baseline_image_only/best_model.pt'
+CFG_PATH  = 'ham10000/configs/resnet50_v12recipe.yaml'
+CKPT_PATH = 'ham10000/checkpoints/resnet50_v12recipe/best_model.pt'
 CSV_PATH  = 'ham10000/data/HAM10000_split.csv'
 IMG_DIRS  = [
     'ham10000/data/HAM10000_images_part_1',
@@ -37,10 +38,11 @@ with open(CFG_PATH) as f:
     cfg = yaml.safe_load(f)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model  = DermaNet(
-    num_classes=7, metadata_dim=0,
-    pretrained=False, dropout=0.3
-).to(device)
+# We're about to load a fully-trained checkpoint, so skip the ImageNet
+# download build_model() would otherwise trigger via cfg['model']['pretrained'].
+cfg['model']['pretrained'] = False
+model = build_model(cfg).to(device)
+print("Architecture:", cfg['model']['architecture'])
 ckpt = torch.load(CKPT_PATH, map_location=device)
 model.load_state_dict(ckpt['model_state_dict'])
 model.eval()
