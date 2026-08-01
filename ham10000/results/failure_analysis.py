@@ -43,7 +43,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 cfg['model']['pretrained'] = False
 model = build_model(cfg).to(device)
 print("Architecture:", cfg['model']['architecture'])
-ckpt = torch.load(CKPT_PATH, map_location=device)
+ckpt = torch.load(CKPT_PATH, map_location=device, weights_only=False)
 model.load_state_dict(ckpt['model_state_dict'])
 model.eval()
 

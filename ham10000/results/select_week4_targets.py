@@ -51,7 +51,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 cfg['model']['pretrained'] = False
 model = build_model(cfg).to(device)
 print("Architecture:", cfg['model']['architecture'])
-ckpt = torch.load(CKPT_PATH, map_location=device)
+ckpt = torch.load(CKPT_PATH, map_location=device, weights_only=False)
 print("Loaded checkpoint from:", CKPT_PATH)
 print("First 5 state_dict keys:", list(ckpt['model_state_dict'].keys())[:5])
 model.load_state_dict(ckpt['model_state_dict'])
