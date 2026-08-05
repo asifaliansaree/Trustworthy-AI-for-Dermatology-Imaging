@@ -113,7 +113,7 @@ def load_model_and_config(
     with open(cfg_path) as f:
         cfg = yaml.safe_load(f)
     device = torch.device("cpu")
-    ckpt   = torch.load(ckpt_path, map_location=device)
+    ckpt   = torch.load(ckpt_path, map_location=device, weights_only=False)
     model  = DermaNet(
         num_classes  = 7,
         metadata_dim = 0,

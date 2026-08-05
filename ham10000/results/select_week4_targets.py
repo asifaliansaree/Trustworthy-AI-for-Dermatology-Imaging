@@ -34,7 +34,7 @@ for p in [_SRC, _ROOT]:
 from model import build_model
 from dataset import HAM10000Dataset
 
-CLASSES   = ['akiec', 'bcc', 'bkl', 'df', 'mel', 'nv', 'vasc']
+CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
 CFG_PATH  = 'ham10000/configs/resnet50_v12recipe.yaml'
 CKPT_PATH = 'ham10000/checkpoints/resnet50_v12recipe/best_model.pt'
 CSV_PATH  = 'ham10000/data/HAM10000_split.csv'
