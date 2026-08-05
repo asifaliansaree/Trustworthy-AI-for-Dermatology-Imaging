@@ -1,113 +1,157 @@
-"""
-Grad-CAM — Method A of 4 in the XAI benchmark.
-Uses Captum's LayerGradCam on ResNet-18 layer4.
-"""
-import os, sys
+import os, sys, yaml, json
 import numpy as np
 import torch
-from captum.attr import LayerGradCam, LayerAttribution
+import torch.nn.functional as F
+import torchvision.transforms as T
+from PIL import Image
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
-_THIS = os.path.dirname(os.path.abspath(__file__))
-for p in [_THIS, os.path.dirname(_THIS), os.path.dirname(os.path.dirname(_THIS))]:
+_SRC  = os.path.dirname(os.path.abspath(__file__))
+_HAM  = os.path.dirname(_SRC)
+_ROOT = os.path.dirname(_HAM)
+for p in [_SRC, _HAM, _ROOT]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from utils import (normalize_attr, overlay_on_image,
-                   load_image, get_prediction, find_image,
-                   save_triple_figure, load_model_and_config,
-                   load_xai_targets, CLASSES)
+CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
+CLASS_MAP = {c: i for i, c in enumerate(CLASSES)}
+MEAN      = [0.485, 0.456, 0.406]
+STD       = [0.229, 0.224, 0.225]
 
-def get_target_layer(model):
-    """Last conv layer before the residual add in the final block of layer4.
+IMG_DIRS = [
+    "ham10000/data/HAM10000_images_part_1",
+    "ham10000/data/HAM10000_images_part_2",
+]
 
-    backbone = nn.Sequential(conv1, bn1, relu, maxpool,
-                              layer1, layer2, layer3, layer4, avgpool)
-    avgpool is index -1, so layer4 is index -2 (NOT -3 - that's layer3).
-    This holds for every ResNet variant in ARCH_REGISTRY, since model.py
-    strips the same 9-item top-level structure regardless of block type.
+def find_image(image_id: str) -> str:
+    for d in IMG_DIRS:
+        p = os.path.join(d, image_id + ".jpg")
+        if os.path.exists(p):
+            return p
+    raise FileNotFoundError(f"Image not found: {image_id}")
 
-    Block type differs by depth, though:
-      - BasicBlock  (resnet18, resnet34):  conv1, conv2        -> conv2 is last
-      - Bottleneck  (resnet50, resnet101): conv1, conv2, conv3 -> conv3 is last
-    Detect via hasattr instead of hardcoding the arch name, so this stays
-    correct if ARCH_REGISTRY grows more variants later.
-    """
-    last_block = model.backbone[-2][-1]
-    return last_block.conv3 if hasattr(last_block, "conv3") else last_block.conv2
+def load_image(img_path: str):
+    """Returns (tensor [1,3,224,224], original PIL, numpy display)."""
+    pil = Image.open(img_path).convert('RGB')
+    tf  = T.Compose([
+        T.Resize((224, 224)),
+        T.ToTensor(),
+        T.Normalize(mean=MEAN, std=STD),
+    ])
+    tensor = tf(pil).unsqueeze(0)
+    display = np.array(pil.resize((224, 224))) / 255.0
+    return tensor, pil, display
 
-def compute_gradcam(model, tensor, target_class, device):
+def normalize_attr(attr: np.ndarray) -> np.ndarray:
+    """Normalize attribution to [0, 1]."""
+    attr = np.maximum(attr, 0)
+    mx   = attr.max()
+    return attr / mx if mx > 0 else attr
+
+def overlay_on_image(display: np.ndarray, heatmap: np.ndarray,
+                     alpha: float = 0.5) -> np.ndarray:
+    """Jet colormap overlay on original image."""
+    colored = cm.jet(heatmap)[:, :, :3]
+    return (1 - alpha) * display + alpha * colored
+
+def get_prediction(model, tensor, device):
+    """Returns (pred_idx, confidence, all_probs)."""
     model.eval()
-    gc  = LayerGradCam(model, get_target_layer(model))
-    att = gc.attribute(tensor.to(device), target=target_class)
-    up  = LayerAttribution.interpolate(att, (224,224), 'bilinear')
-    hm  = up.squeeze().cpu().detach().numpy()
-    return normalize_attr(hm)
+    with torch.no_grad():
+        logits = model(tensor.to(device))
+        probs  = F.softmax(logits, dim=1).cpu()
+        pred   = probs.argmax(1).item()
+        conf   = probs[0, pred].item()
+    return pred, conf, probs[0].numpy()
 
-def run_gradcam_batch(cases, out_dir, model, device, max_cases=20):
-    """Run Grad-CAM on a list of cases."""
-    os.makedirs(out_dir, exist_ok=True)
-    results = []
-    for i, case in enumerate(cases[:max_cases]):
-        try:
-            img_path = find_image(case['image_id'])
-        except FileNotFoundError:
-            continue
-        tensor, _, display = load_image(img_path)
-        pred, conf, _ = get_prediction(model, tensor, device)
-        true_idx = case.get('true_idx', CLASSES.index(case['true_label']))
-        heatmap  = compute_gradcam(model, tensor, pred, device)
-        overlay  = overlay_on_image(display, heatmap)
-        save_path = os.path.join(
-            out_dir,
-            f"{i:02d}_{case['image_id']}"
-            f"_true{case['true_label']}"
-            f"_pred{CLASSES[pred]}.png"
-        )
-        save_triple_figure(
-            display, heatmap, overlay,
-            title=(f"true={case['true_label']} | "
-                   f"pred={CLASSES[pred]} | conf={conf:.3f}"),
-            pred_name=CLASSES[pred],
-            true_name=case['true_label'],
-            conf=conf,
-            save_path=save_path,
-            method_name="Grad-CAM",
-        )
-        results.append({
-            'image_id':    case['image_id'],
-            'true_class':  case['true_label'],
-            'pred_class':  CLASSES[pred],
-            'confidence':  conf,
-            'correct':     pred == true_idx,
-            'heatmap_path': save_path,
-        })
-        print(f"  [{i+1:02d}] {case['image_id']}: "
-              f"true={case['true_label']} pred={CLASSES[pred]} "
-              f"conf={conf:.3f} "
-              f"{'OK' if pred==true_idx else 'WRONG'}")
-    return results
+def remap_resnet_backbone_keys(state_dict: dict) -> dict:
+    """
+    Remap a checkpoint's ResNet-18 backbone keys from the named-submodule
+    format (backbone.conv1, backbone.bn1, backbone.layer1, ...) that older
+    versions of DermaNet used, into the nn.Sequential numeric format that
+    the current DermaNet.__init__ produces:
+        conv1  -> 0
+        bn1    -> 1
+        layer1 -> 4
+        layer2 -> 5
+        layer3 -> 6
+        layer4 -> 7
+    Keys that don't match this pattern (classifier.*, EfficientNet keys,
+    etc.) are passed through unchanged. Safe to call on any checkpoint —
+    if the keys are already in the numeric format, nothing changes.
+    """
+    name_to_idx = {
+        "conv1":  "0",
+        "bn1":    "1",
+        "layer1": "4",
+        "layer2": "5",
+        "layer3": "6",
+        "layer4": "7",
+    }
+    remapped = {}
+    for k, v in state_dict.items():
+        if k.startswith("backbone."):
+            rest = k[len("backbone."):]
+            head, _, tail = rest.partition(".")
+            if head in name_to_idx:
+                new_key = f"backbone.{name_to_idx[head]}"
+                if tail:
+                    new_key += f".{tail}"
+                remapped[new_key] = v
+                continue
+        remapped[k] = v
+    return remapped
 
-if __name__ == "__main__":
-    import json, pandas as pd
-    model, device, _ = load_model_and_config()
+def load_model_and_config(
+    ckpt_path="ham10000/checkpoints/resnet50_v12recipe/best_model.pt",
+    cfg_path ="ham10000/configs/resnet50_v12recipe.yaml",
+):
+    from model import DermaNet
+    with open(cfg_path) as f:
+        cfg = yaml.safe_load(f)
+    device = torch.device("cpu")
+    ckpt   = torch.load(ckpt_path, map_location=device, weights_only=False)
+    model  = DermaNet(
+        num_classes  = 7,
+        metadata_dim = 0,
+        pretrained   = False,
+        dropout      = cfg['model']['dropout'],
+        arch         = cfg['model'].get('architecture','resnet18'),
+    ).to(device)
+    state_dict = remap_resnet_backbone_keys(ckpt['model_state_dict'])
+    model.load_state_dict(state_dict)
+    model.eval()
+    print(f"Model loaded: epoch {ckpt['epoch']}, "
+          f"val_bal_acc={ckpt['val_balanced_accuracy']:.4f}")
+    return model, device, cfg
 
-    with open("ham10000/results/xai_targets_incorrect_melnv.json") as f:
-        incorrect_targets = json.load(f)
-    print("\n=== Grad-CAM on failure cases (mel->nv) ===")
-    fail_results = run_gradcam_batch(
-        incorrect_targets, "ham10000/results/xai/gradcam/failures",
-        model, device, max_cases=20)
+def load_xai_targets(path="ham10000/results/xai_target_cases.json"):
+    with open(path) as f:
+        return json.load(f)
 
-    with open("ham10000/results/xai_targets_correct.json") as f:
-        correct_targets = json.load(f)
-    print("\n=== Grad-CAM on correct cases ===")
-    correct_results = run_gradcam_batch(
-        correct_targets, "ham10000/results/xai/gradcam/correct",
-        model, device, max_cases=20)
-
-    results_df = pd.DataFrame(fail_results + correct_results)
-    results_df.to_csv(
-        "ham10000/results/xai/gradcam_results.csv", index=False)
-    print(f"\nSaved {len(fail_results)} failure + {len(correct_results)} correct heatmaps")
-    print(f"Correct among failures: "
-          f"{sum(r['correct'] for r in fail_results)}/{len(fail_results)}")
+def save_triple_figure(display, heatmap, overlay, title,
+                       pred_name, true_name, conf, save_path,
+                       method_name="Grad-CAM"):
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    axes[0].imshow(display)
+    axes[0].set_title(f"Original\nTrue: {true_name}", fontsize=10)
+    axes[0].axis('off')
+    axes[1].imshow(heatmap, cmap='jet', vmin=0, vmax=1)
+    axes[1].set_title(f"{method_name} heatmap", fontsize=10)
+    axes[1].axis('off')
+    correct = pred_name == true_name
+    axes[2].imshow(overlay)
+    axes[2].set_title(
+        f"Overlay | Pred: {pred_name} ({conf:.2f})",
+        fontsize=10,
+        color='#1D9E75' if correct else '#E24B4A')
+    axes[2].axis('off')
+    if title:
+        fig.suptitle(title, fontsize=10, y=1.01)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
