@@ -67,3 +67,34 @@ attribution-method ranking rather than a gallery of anecdotes.
 | 5-panel comparison figures generated | 8 |
 | Per-method galleries (IG, Occlusion) | full case list each |
 | Checkpoint used | `v0.1-baseline`, epoch 15, val_bal_acc 0.7964 |
+
+---
+
+## Update (Week 6) — Migration to ResNet-50 v12recipe
+
+As with Grad-CAM (see `week4.md`'s migration addendum), all three
+remaining attribution methods and the comparison harness were rerun
+against `resnet50_v12recipe` (epoch 14, val_bal_acc 0.8010, test_bal_acc
+0.7496) rather than the original `v0.1-baseline` checkpoint, since the
+project's official model changed starting Week 6.
+
+### Bug found: inconsistent target-case source across methods
+
+`gradcam.py`'s `__main__` had already been updated to load the two
+purpose-built, balanced files
+(`xai_targets_incorrect_melnv.json`/`xai_targets_correct.json` — see
+`week4.md`), but `saliency.py`, `integrated_gradients.py`, `occlusion.py`,
+and `compare_methods.py` were still calling `load_xai_targets()` with no
+path argument, which defaults to the older, unbalanced
+`xai_target_cases.json`. This meant Grad-CAM and the other three methods
+were silently auditing *different sets of images* — undermining the whole
+point of a side-by-side comparison harness. Fixed by pointing all four
+scripts at the same two balanced JSON files Grad-CAM uses.
+
+### Folder structure now matches Grad-CAM's correct/failures split
+
+Following the same reasoning as Week 4's Grad-CAM folder split, saliency,
+Integrated Gradients, and occlusion now each write to separate
+`/failures` and `/correct` subfolders instead of one flat output
+directory, so results across all four methods have the same, directly
+comparable structure:

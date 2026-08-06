@@ -40,7 +40,7 @@ Tensors/Datasets/DataLoaders, CNNs, loss functions and optimizers, medical image
 # Week 2 — Data Pipeline & Training Infrastructure
 
 * Built `EDA.ipynb`: found 57 missing `age` values, visualized class/sex/age/localization distributions, confirmed nevus accounts for ~67% of images
-* Implemented a **lesion-wise stratified split** (80/10/10, `random_state=42`) to prevent data leakage, saved permanently as `HAM10000_split.csv` (never regenerated), verified zero lesion overlap across splits
+* Implemented a **lesion-wise stratified split** (80/10/10, `random_state=42`) to prevent data leakage, saved permanently as `HAM10000_split.csv` (never regenerated), verified zero lesion overlap across splits — this decision is directly supported by Jamaludin & Kim's data-leakage audit of HAM10000 (see [References](#references)), which documents how image-wise splits on this dataset systematically inflate reported accuracy by leaking near-duplicate lesion photos across train/test
 * Built separate train vs. val/test augmentation pipelines (RandomCrop, flips, ColorJitter, RandomRotation for train; resize + ImageNet normalization for val/test) and precomputed `class_weights.npy`
 * Built `MetadataEncoder`: 18-dimensional feature vector from age (z-score, median-imputed, missing indicator), sex (binary), and localization (one-hot, 15 categories); researched and ranked fusion strategies in `notes/metadata_research.md`, selecting **late fusion** for this phase
 * Built **DermaNet** (`src/model.py`): ResNet-18 (ImageNet pretrained) with an optional metadata late-fusion head, switchable via `metadata_dim`
@@ -69,10 +69,10 @@ Touching the test set exactly once, reading learning curves for overfitting, con
 
 # Week 4 — Grad-CAM & First Heatmaps ✅ complete
 
-* Implemented Grad-CAM (`src/explain/gradcam.py`) on the locked `v0.1-baseline` checkpoint
-* Ran Grad-CAM over the fixed `xai_target_cases.json` audit list plus additional correctly-classified cases, producing heatmaps split into `results/xai/gradcam/correct/` (13 cases) and `results/xai/gradcam/failures/` (20 cases)
-* Logged every case (image ID, true class, predicted class, confidence, correctness, heatmap path) to `results/xai/gradcam_results.csv` for downstream analysis
-* Began building out the shared `src/explain/utils.py` helpers (image loading, prediction, overlay generation, attribution normalization) that the rest of the attribution methods reuse
+* Implemented Grad-CAM (`src/explain/gradcam.py`), originally against the locked `v0.1-baseline` checkpoint; **migrated to `resnet50_v12recipe` in Week 6** (see `notes/week4.md`'s migration addendum) once that became the project's test-verified best model
+* Ran Grad-CAM over a mel→nv-focused failure list plus a balanced correct-case list, producing heatmaps split into `results/xai/gradcam/correct/` (20 cases) and `results/xai/gradcam/failures/` (10 cases)
+* Logged every case (image ID, true class, predicted class, confidence, correctness, heatmap path) to `results/xai/gradcam_results.csv`
+* Built the shared `src/explain/utils.py` helpers (image loading, prediction, overlay generation, attribution normalization, model loading) that the rest of the attribution methods reuse
 
 ### Key concepts learned
 Class Activation Mapping and how gradients flow back to convolutional feature maps, visual auditing of correct vs. incorrect predictions, building reusable XAI infrastructure instead of one-off scripts.
@@ -81,12 +81,13 @@ Class Activation Mapping and how gradients flow back to convolutional feature ma
 
 # Week 5 — Attribution Benchmark & Comparison Harness ✅ complete
 
-* Implemented three additional attribution methods against the same baseline checkpoint: vanilla saliency (`src/explain/saliency.py`), Integrated Gradients (`src/explain/integrated_gradients.py`), and occlusion sensitivity (`src/explain/occlusion.py`)
-* Built a unified comparison harness (`src/explain/compare_methods.py`) that runs all four methods on the same case and renders a single 5-panel figure — Original | Grad-CAM | Integrated Gradients | Saliency | Occlusion — annotated with the true/predicted label and correctness, saved to `results/xai/comparison/`
-* Generated per-method output galleries for occlusion and Integrated Gradients across the audit case list (`results/xai/occlusion/`, `results/xai/integrated_gradients/`)
+* Implemented three additional attribution methods — vanilla saliency (`src/explain/saliency.py`), Integrated Gradients (`src/explain/integrated_gradients.py`), and occlusion sensitivity (`src/explain/occlusion.py`) — against the same checkpoint as Grad-CAM
+* Built a unified comparison harness (`src/explain/compare_methods.py`) that runs all four methods on the same case and renders a single 5-panel figure — Original | Grad-CAM | Integrated Gradients | Saliency | Occlusion — saved to `results/xai/comparison/`
+* Generated per-method output galleries for all four methods, each split into `/failures` and `/correct` subfolders for direct comparison
+* **Migrated to `resnet50_v12recipe` in Week 6** (see `notes/week5.md`'s migration addendum), including fixing a bug where three of the four methods were silently auditing a different, unbalanced case list than Grad-CAM
 
 ### Key concepts learned
-How the four attribution families disagree or agree on the same input, building one harness that fairly compares multiple XAI methods rather than evaluating each in isolation, the practical cost trade-off of occlusion (much slower — a full sweep per image) versus gradient-based methods.
+How the four attribution families disagree or agree on the same input, building one harness that fairly compares multiple XAI methods rather than evaluating each in isolation, the practical cost trade-off of occlusion versus gradient-based methods, and the importance of verifying that "parallel" pipelines are actually consuming the same input data.
 
 ---
 
@@ -98,7 +99,7 @@ Planned per the synopsis: obtain ISIC lesion segmentation masks and implement qu
 
 # Parallel Track — Baseline Strengthening (Post-Lock Model Iteration)
 
-> Note: the synopsis locks the baseline checkpoint at the end of Week 3 (`v0.1-baseline`, val_bal_acc 0.7964) and runs all Week 4–9 XAI work against it. In parallel with the Week 4–5 explainability work above, a separate line of experiments re-opened the ResNet-18 training recipe to see how much further balanced accuracy could be pushed. This is documented here for transparency; it sits outside the synopsis's week numbering, and the XAI results above still refer to the original `v0.1-baseline` checkpoint unless noted otherwise.
+> Note: the synopsis locks the baseline checkpoint at the end of Week 3 (`v0.1-baseline`, val_bal_acc 0.7964) and runs all Week 4–9 XAI work against it. In parallel with the Week 4–5 explainability work above, a separate line of experiments re-opened the ResNet-18 training recipe to see how much further balanced accuracy could be pushed. This is documented here for transparency; it sits outside the synopsis's week numbering. The XAI results in Weeks 4–5 originally referred to `v0.1-baseline`; both were migrated to `resnet50_v12recipe` in Week 6 once test-set verification (below) established it as the stronger model — see the migration addenda in `notes/week4.md` and `notes/week5.md` for full detail.
 
 **What triggered it:** three early ablations testing class-imbalance fixes in isolation all made things *worse* than the plain baseline:
 
@@ -174,7 +175,6 @@ Across all three test-verified models, `mel`, `df`, and `bkl` remain the weakest
 
 # Week 3 Go/No-Go Checklist — Result
 
-```
 === WEEK 3 GO/NO-GO CHECKLIST ===
 
 [PASS] Baseline bal-acc >= 0.65: 0.7318
@@ -187,7 +187,7 @@ Across all three test-verified models, `mel`, `df`, and `bkl` remain the weakest
 
 7/7 checks passed
 STATUS: GO — proceed to Week 4 XAI
-```
+
 
 **Tagged:** `v0.1-baseline`
 **Checkpoint used for all Week 4–9 work:** `ham10000/checkpoints/baseline_image_only/best_model.pt` (epoch 15, val_bal_acc = 0.7964)
@@ -235,25 +235,27 @@ STATUS: GO — proceed to Week 4 XAI
 │   │   │   ├── failure_mel_as_nv.png
 │   │   │   └── high_confidence_errors.png
 │   │   ├── xai/
-│   │   │   ├── gradcam/
-│   │   │   │   ├── correct/           # Week 4: correctly-classified heatmaps
-│   │   │   │   └── failures/          # Week 4: misclassified heatmaps
-│   │   │   ├── gradcam_results.csv    # Week 4: per-case log
-│   │   │   ├── integrated_gradients/  # Week 5
-│   │   │   ├── occlusion/             # Week 5
-│   │   │   └── comparison/            # Week 5: 4-method comparison figures
+│   │   │   ├── gradcam/{correct,failures}/       # Week 4
+│   │   │   ├── gradcam_results.csv               # Week 4: per-case log
+│   │   │   ├── saliency/{correct,failures}/      # Week 5
+│   │   │   ├── integrated_gradients/{correct,failures}/  # Week 5
+│   │   │   ├── occlusion/{correct,failures}/     # Week 5
+│   │   │   └── comparison/                       # Week 5: 4-method comparison figures
 │   │   ├── baseline_image_only.json   # locked test results
 │   │   ├── baseline_image_only_report.txt
 │   │   ├── metadata_fusion.json       # locked test results
 │   │   ├── metadata_fusion_report.txt
-│   │   ├── xai_target_cases.json      # 20 high-confidence failure cases → XAI audit list
+│   │   ├── xai_target_cases.json           # broad high-confidence failure list
+│   │   ├── xai_targets_incorrect_melnv.json # mel→nv-only failures (Week 6+ primary audit list)
+│   │   ├── xai_targets_correct.json        # balanced correct-case list
+│   │   ├── select_week4_targets.py
 │   │   ├── plot_learning_curves.py
 │   │   ├── failure_analysis.py
 │   │   ├── ablation_comparison.py
 │   │   ├── generate_figure.py
 │   │   └── generate_gradcam_gallery.py
 │   ├── src/
-│   │   ├── model.py                   # DermaNet (ResNet-18 + optional fusion)
+│   │   ├── model.py                   # DermaNet (config-driven arch: resnet18/resnet50/etc.)
 │   │   ├── train.py                   # full training loop + CSV logging
 │   │   ├── evaluate.py                # library: run_inference, compute_metrics
 │   │   ├── evaluate_test.py           # standalone CLI evaluator
@@ -277,6 +279,8 @@ STATUS: GO — proceed to Week 4 XAI
 │   ├── week1.md
 │   ├── week2.md
 │   ├── week3.md
+│   ├── week4.md
+│   ├── week5.md
 │   ├── ham10000_intro.md
 │   └── metadata_research.md
 │
@@ -304,32 +308,31 @@ STATUS: GO — proceed to Week 4 XAI
 
 # Current Status
 
-**Week 5 — COMPLETE ✅**
+**Week 5 — COMPLETE ✅, Week 6 architecture migration ✅**
 
 - [x] Week 1: Environment, CIFAR-10 CNN, HAM10000 exploration, custom Dataset
 - [x] Week 2: EDA, leakage-free split, augmented DataLoader, MetadataEncoder, DermaNet, train/evaluate pipeline
 - [x] Week 3: Full baseline training (bal-acc 0.7318), metadata-fusion ablation, diagnostics, go/no-go passed (7/7), tagged `v0.1-baseline`
-- [x] Week 4: Grad-CAM implemented, heatmaps generated for correct (13) and failure (20) cases, logged to `gradcam_results.csv`
-- [x] Week 5: Saliency, Integrated Gradients, and occlusion implemented; unified 4-method comparison harness built and run over the audit case list
+- [x] Week 4: Grad-CAM implemented, heatmaps generated for correct/failure cases, logged to `gradcam_results.csv`; migrated to `resnet50_v12recipe`
+- [x] Week 5: Saliency, Integrated Gradients, and occlusion implemented; unified 4-method comparison harness built; migrated to `resnet50_v12recipe`, folder structure unified into `{correct,failures}` splits across all four methods
 - [ ] Week 6: Mask-overlap evaluation (IoU, pointing game) against ISIC lesion masks — next
 
 ---
 
 # Roadmap
 
-```
-Week 1–2   Data pipeline, DermaNet, training infrastructure       ✅ complete
-Week 3     Baseline training and rigorous evaluation               ✅ complete (tagged v0.1-baseline)
-Week 4     Grad-CAM implementation and first heatmaps              ✅ complete
-Week 5     Attribution benchmark: IG, saliency, occlusion + comparison harness   ✅ complete
-Week 6     Quantitative XAI benchmark against ISIC lesion masks (IoU, pointing game)  ← next
-Week 7     Inter-method agreement analysis
-Week 8     Shortcut-learning audit (artifact-driven prediction hunting)
-Week 9     Faithfulness checks: deletion / insertion curves
-Week 10    Results consolidation and ablation runs
-Week 11    Mini-paper draft + reproducibility pass
-Week 12    Final delivery: paper + repo + presentation
-```
+Week 1–2 Data pipeline, DermaNet, training infrastructure ✅ complete
+Week 3 Baseline training and rigorous evaluation ✅ complete (tagged v0.1-baseline)
+Week 4 Grad-CAM implementation and first heatmaps ✅ complete
+Week 5 Attribution benchmark: IG, saliency, occlusion + comparison harness ✅ complete
+Week 6 Quantitative XAI benchmark against ISIC lesion masks (IoU, pointing game) ← next
+Week 7 Inter-method agreement analysis
+Week 8 Shortcut-learning audit (artifact-driven prediction hunting)
+Week 9 Faithfulness checks: deletion / insertion curves
+Week 10 Results consolidation and ablation runs
+Week 11 Mini-paper draft + reproducibility pass
+Week 12 Final delivery: paper + repo + presentation
+
 
 ---
 
@@ -338,5 +341,16 @@ Week 12    Final delivery: paper + repo + presentation
 **Target venues**: MICCAI 2027 workshop (ISIC / UNSURE track) · IEEE BHI · arXiv preprint
 
 **Core contribution**: Quantitative benchmark of ≥4 attribution methods on HAM10000 using ISIC lesion masks, combined with a shortcut-learning audit measuring the frequency of artifact-driven predictions in high-confidence correct classifications.
+
+---
+
+# References
+
+- Jamaludin, M. R. A., & Kim, C. S. *Evaluation Integrity in Hybrid Quantum-Classical Skin Lesion Classification: A Data-Leakage Audit and Lesion-Level Correction on HAM10000.* Department of Information System, Pukyong National University, Busan 48513, South Korea.
+- Tschandl, P., Rosendahl, C., & Kittler, H. (2018). The HAM10000 dataset, a large collection of multi-source dermatoscopic images of common pigmented skin lesions. *Scientific Data*, 5, 180161.
+- Selvaraju, R. R., et al. (2017). Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization. *ICCV*.
+- Sundararajan, M., Taly, A., & Yan, Q. (2017). Axiomatic Attribution for Deep Networks (Integrated Gradients). *ICML*.
+- Zeiler, M. D., & Fergus, R. (2014). Visualizing and Understanding Convolutional Networks (Occlusion sensitivity). *ECCV*.
+- Cui, Y., et al. (2019). Class-Balanced Loss Based on Effective Number of Samples. *CVPR*.
 
 ---
