@@ -32,9 +32,15 @@ for p in [_SRC, _ROOT]:
         sys.path.insert(0, os.path.abspath(p))
 
 from model import build_model
-from dataset import HAM10000Dataset
+from dataset import HAM10000Dataset, CLASS_MAP
 
-CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
+# Built from CLASS_MAP (not hardcoded) so this can't drift out of sync
+# with the model's real label encoding the way failure_analysis.py's
+# copy once did.
+CLASSES = [None] * len(CLASS_MAP)
+for name, idx in CLASS_MAP.items():
+    CLASSES[idx] = name
+
 CFG_PATH  = 'ham10000/configs/resnet50_v12recipe.yaml'
 CKPT_PATH = 'ham10000/checkpoints/resnet50_v12recipe/best_model.pt'
 CSV_PATH  = 'ham10000/data/HAM10000_split.csv'

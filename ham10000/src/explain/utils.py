@@ -16,8 +16,11 @@ for p in [_SRC, _HAM, _ROOT]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
-CLASS_MAP = {c: i for i, c in enumerate(CLASSES)}
+from dataset import CLASS_MAP, get_transform
+
+CLASSES = [None] * len(CLASS_MAP)
+for name, idx in CLASS_MAP.items():
+    CLASSES[idx] = name
 MEAN      = [0.485, 0.456, 0.406]
 STD       = [0.229, 0.224, 0.225]
 
@@ -36,11 +39,7 @@ def find_image(image_id: str) -> str:
 def load_image(img_path: str):
     """Returns (tensor [1,3,224,224], original PIL, numpy display)."""
     pil = Image.open(img_path).convert('RGB')
-    tf  = T.Compose([
-        T.Resize((224, 224)),
-        T.ToTensor(),
-        T.Normalize(mean=MEAN, std=STD),
-    ])
+    tf  = get_transform(split='test')
     tensor = tf(pil).unsqueeze(0)
     display = np.array(pil.resize((224, 224))) / 255.0
     return tensor, pil, display

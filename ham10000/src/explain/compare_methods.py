@@ -3,7 +3,7 @@ Generate 4-method comparison figures.
 One figure per image showing: original | GradCAM | IG | Saliency | Occlusion
 This is Figure 5 of the paper.
 """
-import os, sys, numpy as np, torch
+import os, sys, json, numpy as np, torch
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -76,15 +76,32 @@ def compare_one(case, model, device, save_path):
 
 if __name__ == "__main__":
     model, device, _ = load_model_and_config()
-    targets = load_xai_targets()
 
-    print(f"\n=== 4-method comparison (first 8 cases) ===")
+    with open("ham10000/results/xai_targets_incorrect_melnv.json") as f:
+        failure_targets = json.load(f)
+    with open("ham10000/results/xai_targets_correct.json") as f:
+        correct_targets = json.load(f)
+
+    N_FAILURES = 8   # mel->nv failures — the clinically dangerous error mode
+    N_CORRECT  = 4   # a handful of correct cases for contrast
+
+    print(f"\n=== 4-method comparison "
+          f"({N_FAILURES} mel->nv failures + {N_CORRECT} correct cases) ===")
     print("Note: each image takes ~3-5 min on CPU due to occlusion")
 
-    for i, case in enumerate(targets[:8]):
+    idx = 0
+    for case in failure_targets[:N_FAILURES]:
         save_path = os.path.join(
-            OUT, f"{i:02d}_{case['image_id']}_comparison.png")
+            OUT, f"{idx:02d}_fail_{case['image_id']}_comparison.png")
         compare_one(case, model, device, save_path)
         print(f"  Saved: {save_path}")
+        idx += 1
+
+    for case in correct_targets[:N_CORRECT]:
+        save_path = os.path.join(
+            OUT, f"{idx:02d}_correct_{case['image_id']}_comparison.png")
+        compare_one(case, model, device, save_path)
+        print(f"  Saved: {save_path}")
+        idx += 1
 
     print(f"\nAll comparison figures saved to {OUT}/")

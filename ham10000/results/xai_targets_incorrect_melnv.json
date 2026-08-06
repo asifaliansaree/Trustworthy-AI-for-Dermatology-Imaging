@@ -1,8 +1,62 @@
 [
   {
-    "image_id": "ISIC_0031000",
+    "image_id": "ISIC_0028760",
     "true_label": "mel",
     "pred_label": "nv",
-    "confidence": 0.3631789982318878
+    "confidence": 0.9116397500038147
+  },
+  {
+    "image_id": "ISIC_0030192",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.8910398483276367
+  },
+  {
+    "image_id": "ISIC_0025783",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.7463673949241638
+  },
+  {
+    "image_id": "ISIC_0031146",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.6797366142272949
+  },
+  {
+    "image_id": "ISIC_0032845",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.6060894131660461
+  },
+  {
+    "image_id": "ISIC_0028017",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.6011738777160645
+  },
+  {
+    "image_id": "ISIC_0032955",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.569680392742157
+  },
+  {
+    "image_id": "ISIC_0025708",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.5293612480163574
+  },
+  {
+    "image_id": "ISIC_0027387",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.5149972438812256
+  },
+  {
+    "image_id": "ISIC_0026475",
+    "true_label": "mel",
+    "pred_label": "nv",
+    "confidence": 0.3905932903289795
   }
 ]

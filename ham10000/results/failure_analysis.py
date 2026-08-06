@@ -20,9 +20,15 @@ for p in [_SRC, _ROOT]:
         sys.path.insert(0, os.path.abspath(p))
 
 from model import build_model
-from dataset import HAM10000Dataset
+from dataset import HAM10000Dataset, CLASS_MAP
 
-CLASSES = ['akiec','bcc','bkl','df','mel','nv','vasc']
+# Build CLASSES from CLASS_MAP so index->name lookups always match the
+# model's real label encoding (mel:0, nv:1, bcc:2, akiec:3, bkl:4, df:5,
+# vasc:6) instead of drifting out of sync with a second hardcoded list.
+CLASSES = [None] * len(CLASS_MAP)
+for name, idx in CLASS_MAP.items():
+    CLASSES[idx] = name
+
 OUT     = 'ham10000/results/figures'
 os.makedirs(OUT, exist_ok=True)
 

@@ -1,110 +1,110 @@
 [
   {
     "image_id": "ISIC_0028442",
-    "true_label": "akiec",
-    "pred_label": "akiec",
+    "true_label": "mel",
+    "pred_label": "mel",
     "confidence": 0.9931504130363464
   },
   {
     "image_id": "ISIC_0033299",
-    "true_label": "akiec",
-    "pred_label": "akiec",
+    "true_label": "mel",
+    "pred_label": "mel",
     "confidence": 0.9901684522628784
   },
   {
     "image_id": "ISIC_0032550",
-    "true_label": "akiec",
-    "pred_label": "akiec",
+    "true_label": "mel",
+    "pred_label": "mel",
     "confidence": 0.9620617628097534
   },
   {
     "image_id": "ISIC_0024438",
-    "true_label": "bcc",
-    "pred_label": "bcc",
+    "true_label": "nv",
+    "pred_label": "nv",
     "confidence": 0.9878133535385132
   },
   {
     "image_id": "ISIC_0026896",
-    "true_label": "bcc",
-    "pred_label": "bcc",
+    "true_label": "nv",
+    "pred_label": "nv",
     "confidence": 0.9815874695777893
   },
   {
     "image_id": "ISIC_0030185",
-    "true_label": "bcc",
-    "pred_label": "bcc",
+    "true_label": "nv",
+    "pred_label": "nv",
     "confidence": 0.9808338284492493
   },
   {
     "image_id": "ISIC_0034058",
-    "true_label": "bkl",
-    "pred_label": "bkl",
+    "true_label": "bcc",
+    "pred_label": "bcc",
     "confidence": 0.9987850785255432
   },
   {
     "image_id": "ISIC_0026442",
-    "true_label": "bkl",
-    "pred_label": "bkl",
+    "true_label": "bcc",
+    "pred_label": "bcc",
     "confidence": 0.9958744645118713
   },
   {
     "image_id": "ISIC_0026213",
-    "true_label": "bkl",
-    "pred_label": "bkl",
+    "true_label": "bcc",
+    "pred_label": "bcc",
     "confidence": 0.9856122732162476
   },
   {
     "image_id": "ISIC_0025780",
-    "true_label": "df",
-    "pred_label": "df",
+    "true_label": "akiec",
+    "pred_label": "akiec",
     "confidence": 0.9963782429695129
   },
   {
     "image_id": "ISIC_0027958",
-    "true_label": "df",
-    "pred_label": "df",
+    "true_label": "akiec",
+    "pred_label": "akiec",
     "confidence": 0.9944731593132019
   },
   {
     "image_id": "ISIC_0031044",
-    "true_label": "df",
-    "pred_label": "df",
+    "true_label": "akiec",
+    "pred_label": "akiec",
     "confidence": 0.9937412142753601
   },
   {
     "image_id": "ISIC_0025387",
-    "true_label": "mel",
-    "pred_label": "mel",
+    "true_label": "bkl",
+    "pred_label": "bkl",
     "confidence": 0.9726267457008362
   },
   {
     "image_id": "ISIC_0032763",
-    "true_label": "mel",
-    "pred_label": "mel",
+    "true_label": "bkl",
+    "pred_label": "bkl",
     "confidence": 0.9671168327331543
   },
   {
     "image_id": "ISIC_0027509",
-    "true_label": "mel",
-    "pred_label": "mel",
+    "true_label": "bkl",
+    "pred_label": "bkl",
     "confidence": 0.9606854319572449
   },
   {
     "image_id": "ISIC_0033808",
-    "true_label": "nv",
-    "pred_label": "nv",
+    "true_label": "df",
+    "pred_label": "df",
     "confidence": 0.9805583357810974
   },
   {
     "image_id": "ISIC_0033847",
-    "true_label": "nv",
-    "pred_label": "nv",
+    "true_label": "df",
+    "pred_label": "df",
     "confidence": 0.9726348519325256
   },
   {
     "image_id": "ISIC_0030579",
-    "true_label": "nv",
-    "pred_label": "nv",
+    "true_label": "df",
+    "pred_label": "df",
     "confidence": 0.929412841796875
   },
   {

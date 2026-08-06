@@ -1,5 +1,5 @@
 """Vanilla Saliency — Method C of 4."""
-import os, sys, numpy as np, torch
+import os, sys, json, numpy as np, torch
 from captum.attr import Saliency
 
 _THIS = os.path.dirname(os.path.abspath(__file__))
@@ -42,6 +42,15 @@ def run_saliency_batch(cases, out_dir, model, device, max_cases=20):
 
 if __name__ == "__main__":
     model, device, _ = load_model_and_config()
-    targets = load_xai_targets()
-    print("\n=== Saliency on failure cases ===")
-    run_saliency_batch(targets, "ham10000/results/xai/saliency", model, device)
+
+    with open("ham10000/results/xai_targets_incorrect_melnv.json") as f:
+        failure_targets = json.load(f)
+    with open("ham10000/results/xai_targets_correct.json") as f:
+        correct_targets = json.load(f)
+
+    print("\n=== Saliency on failure cases (mel->nv) ===")
+    run_saliency_batch(failure_targets, "ham10000/results/xai/saliency/failures",
+                       model, device, max_cases=10)
+    print("\n=== Saliency on correct cases ===")
+    run_saliency_batch(correct_targets, "ham10000/results/xai/saliency/correct",
+                       model, device, max_cases=20)

@@ -1,5 +1,5 @@
 """Occlusion sensitivity — Method D of 4."""
-import os, sys, numpy as np, torch
+import os, sys, json, numpy as np, torch
 from captum.attr import Occlusion
 
 _THIS = os.path.dirname(os.path.abspath(__file__))
@@ -56,8 +56,18 @@ def run_occlusion_batch(cases, out_dir, model, device, max_cases=20):
 
 if __name__ == "__main__":
     model, device, _ = load_model_and_config()
-    targets = load_xai_targets()
-    print("\n=== Occlusion on failure cases ===")
+
+    with open("ham10000/results/xai_targets_incorrect_melnv.json") as f:
+        failure_targets = json.load(f)
+    with open("ham10000/results/xai_targets_correct.json") as f:
+        correct_targets = json.load(f)
+
+    print("\n=== Occlusion on failure cases (mel->nv) ===")
     print("Note: occlusion is slow on CPU (~2-3 min per image)")
-    run_occlusion_batch(targets, "ham10000/results/xai/occlusion",
+    run_occlusion_batch(failure_targets, "ham10000/results/xai/occlusion/failures",
+                        model, device, max_cases=10)
+
+    print("\n=== Occlusion on correct cases ===")
+    print("Note: occlusion is slow on CPU (~2-3 min per image)")
+    run_occlusion_batch(correct_targets, "ham10000/results/xai/occlusion/correct",
                         model, device, max_cases=10)
