@@ -3,6 +3,7 @@ HAM10000Dataset — configurable augmentation, split-aware loading,
 optional metadata encoder support.
 """
 import os
+import glob
 import pandas as pd
 from PIL import Image
 import torch
@@ -48,6 +49,45 @@ def get_transform(split: str, img_size: int = 224,
         ])
 
 
+def _build_image_index(search_roots: list) -> dict:
+    """
+    Recursively walk each directory in `search_roots` and build a
+    {image_id: full_path} index of every .jpg found.
+
+    This makes image lookup independent of the on-disk layout — it works
+    whether images sit in flat HAM10000_images_part_1/2 folders (the
+    original Kaggle release layout) or in the fold_N/class/ tree produced
+    by make_kfold_folders.py (symlinks or real files, doesn't matter).
+    Later roots don't overwrite earlier matches, so pass roots in priority
+    order if a given image_id could exist in more than one.
+    """
+    index = {}
+    for root in search_roots:
+        if not root or not os.path.isdir(root):
+            continue
+        for path in glob.glob(os.path.join(root, "**", "*.jpg"), recursive=True):
+            image_id = os.path.splitext(os.path.basename(path))[0]
+            index.setdefault(image_id, path)
+    return index
+
+
+def _discover_kaggle_input_roots() -> list:
+    """
+    On Kaggle, attached datasets are mounted read-only under /kaggle/input
+    and are NOT automatically visible inside a cloned repo's data_dir.
+    If a directory literally named 'kfold' (the output of
+    make_kfold_folders.py) exists anywhere under /kaggle/input, treat it
+    as an extra image search root. This is a no-op off Kaggle.
+    """
+    roots = []
+    kaggle_input = "/kaggle/input"
+    if os.path.isdir(kaggle_input):
+        for dirpath, dirnames, _ in os.walk(kaggle_input):
+            if "kfold" in dirnames:
+                roots.append(os.path.join(dirpath, "kfold"))
+    return roots
+
+
 class HAM10000Dataset(Dataset):
     """
     HAM10000 dataset loader.
@@ -74,6 +114,10 @@ class HAM10000Dataset(Dataset):
         folds:             list of int fold numbers (0-4) to include when
                            kfold_csv is set, e.g. [0,1,2,3] for a training
                            set that excludes fold 4 as validation.
+        extra_img_dirs:    optional list of additional directories to search
+                           for images (searched recursively), on top of the
+                           default HAM10000_images_part_1/2 and any
+                           auto-detected Kaggle 'kfold' input folders.
     """
 
     def __init__(
@@ -85,6 +129,7 @@ class HAM10000Dataset(Dataset):
         augment:          bool = True,
         kfold_csv:        Optional[str]  = None,
         folds:            Optional[list] = None,
+        extra_img_dirs:   Optional[list] = None,
     ):
         assert split in ("train", "val", "test"), \
             f"split must be train/val/test, got '{split}'"
@@ -106,26 +151,35 @@ class HAM10000Dataset(Dataset):
         self.metadata_encoder = metadata_encoder
         self.transform        = get_transform(split, img_size, augment)
 
-        self._img_dirs = [
+        # Search order: legacy flat folders first, then any caller-supplied
+        # extra dirs, then auto-detected Kaggle input 'kfold' folders, then
+        # data_dir itself (covers a kfold/ tree placed directly inside it).
+        search_roots = [
             os.path.join(data_dir, "HAM10000_images_part_1"),
             os.path.join(data_dir, "HAM10000_images_part_2"),
+            *(extra_img_dirs or []),
+            *_discover_kaggle_input_roots(),
+            data_dir,
         ]
+        self._image_index = _build_image_index(search_roots)
 
         mode = "train" if split == "train" and augment else split
         meta = " + metadata" if metadata_encoder else ""
-        print(f"[{split}] {len(self.df)} images{meta} | mode={mode}")
+        print(f"[{split}] {len(self.df)} images{meta} | mode={mode} "
+              f"| indexed {len(self._image_index)} images on disk")
 
     def __len__(self) -> int:
         return len(self.df)
 
     def _find_image(self, image_id: str) -> str:
-        for d in self._img_dirs:
-            p = os.path.join(d, image_id + ".jpg")
-            if os.path.exists(p):
-                return p
-        raise FileNotFoundError(
-            f"Image '{image_id}' not found in either image directory."
-        )
+        path = self._image_index.get(image_id)
+        if path is None:
+            raise FileNotFoundError(
+                f"Image '{image_id}' not found in any indexed image directory "
+                f"(searched HAM10000_images_part_1/2, any Kaggle 'kfold' input "
+                f"folders, and {self.data_dir})."
+            )
+        return path
 
     def __getitem__(self, idx: int):
         row   = self.df.iloc[idx]
@@ -138,3 +192,4 @@ class HAM10000Dataset(Dataset):
             return image, meta, label
 
         return image, label
+    
