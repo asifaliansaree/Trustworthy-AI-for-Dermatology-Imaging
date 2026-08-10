@@ -192,4 +192,3 @@ class HAM10000Dataset(Dataset):
             return image, meta, label
 
         return image, label
-    
