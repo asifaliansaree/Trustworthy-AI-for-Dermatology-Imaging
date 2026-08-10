@@ -32,13 +32,27 @@ print("✅ No lesion leakage detected.\n")
 # ----------------------------
 # Class weights (train only)
 # ----------------------------
+# This MUST match the label index used everywhere else in the pipeline
+# (dataset.py's CLASS_MAP, train.py's CLASS_MAP) -- mel:0, nv:1, bcc:2,
+# akiec:3, bkl:4, df:5, vasc:6. This was previously alphabetical
+# (akiec:0, bcc:1, bkl:2, df:3, mel:4, nv:5, vasc:6), which meant every
+# weight in the saved class_weights.npy landed on the WRONG class index
+# whenever a config used it directly (loss.alpha_mode: inverse, or plain
+# cross_entropy/label_smoothing with weight=class_weights). Configs using
+# loss.alpha_mode: effective_num (e.g. resnet50_v12recipe.yaml) were NOT
+# affected -- that path recomputes its own weights from loss.class_counts
+# in the YAML and only reads class_weights.npy for its .device attribute.
+#
+# IMPORTANT: this code fix alone does not correct any class_weights.npy
+# file already saved to disk with the old (wrong) ordering -- rerun this
+# script to regenerate it after pulling this fix.
 CLASS_MAP = {
-    "akiec": 0,
-    "bcc": 1,
-    "bkl": 2,
-    "df": 3,
-    "mel": 4,
-    "nv": 5,
+    "mel": 0,
+    "nv": 1,
+    "bcc": 2,
+    "akiec": 3,
+    "bkl": 4,
+    "df": 5,
     "vasc": 6,
 }
 
