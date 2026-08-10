@@ -180,6 +180,15 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
             sampler=sampler,
             num_workers=nw,
             pin_memory=torch.cuda.is_available(),
+            # drop_last: without this, whenever len(train) % batch_size == 1
+            # the final batch has exactly 1 sample, and BatchNorm cannot
+            # compute batch statistics from a single sample -- crashes with
+            # "Expected more than 1 value per channel when training". This
+            # was always a latent risk with the old fixed 80/10/10 split
+            # (just never landed on that exact remainder); 5-fold CV makes
+            # it far more likely to hit since each rotation's train size
+            # differs slightly (a different fold is excluded each time).
+            drop_last=True,
         )
         print("WeightedRandomSampler enabled "
               f"(class counts: {class_counts.tolist()})")
@@ -190,6 +199,7 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
             shuffle=True,
             num_workers=nw,
             pin_memory=torch.cuda.is_available(),
+            drop_last=True,  # see comment above
         )
 
     return {
