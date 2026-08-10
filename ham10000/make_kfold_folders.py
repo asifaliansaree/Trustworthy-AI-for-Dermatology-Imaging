@@ -1,29 +1,13 @@
-"""
-Materialize the 5-fold split into actual folders on disk:
+"""Materialize the CV fold split into actual folders on disk.
 
-    ham10000/data/kfold/
-        fold_0/
-            mel/    <- all mel images assigned to fold 0
-            nv/
-            bcc/
-            akiec/
-            bkl/
-            df/
-            vasc/
-        fold_1/
-            mel/
-            ...
-        ...
-        fold_4/
-            ...
+This script reuses the leakage-free splits saved in
+ham10000/data/HAM10000_kfold_split.csv and creates the 5-fold directory tree
+used for cross-validation.
 
-This is what Dr. Bajwa actually asked for: 5 physical folders, each
-containing 7 class subfolders, with per-class proportions matching
-HAM10000's overall distribution.
-
-It does NOT recompute the split — it reuses the leakage-free, stratified
-fold assignment already saved in HAM10000_kfold_split.csv (produced by
-make_kfold_split.py). Run that script first if that CSV doesn't exist yet.
+The new protocol stores a separate test partition in the CSV using the
+"split" column. Rows with split="trainval" and fold 0-4 are materialized into
+the five CV-fold folders, and rows with split="test" are materialized into a
+separate test folder so the held-out set is available for final evaluation.
 
 By default this SYMLINKS images instead of copying them, because HAM10000
 is ~2.5GB and duplicating it 1x again just to reorganize by folder wastes
@@ -87,19 +71,27 @@ def main():
 
     df = pd.read_csv(KFOLD_CSV)
     assert "fold" in df.columns, f"{KFOLD_CSV} has no 'fold' column — regenerate it."
+    assert "split" in df.columns, f"{KFOLD_CSV} has no 'split' column — regenerate it."
 
-    print(f"Loaded {len(df)} images across {df['fold'].nunique()} folds.")
+    cv_df = df.loc[(df["split"] == "trainval") & (df["fold"].isin(range(N_FOLDS)))].copy()
+    test_df = df.loc[df["split"] == "test"].copy()
+    if len(cv_df) == 0:
+        raise ValueError("No trainval rows with valid folds were found in the split CSV.")
+
+    print(f"Loaded {len(df)} images total; materializing {len(cv_df)} trainval images across {cv_df['fold'].nunique()} folds and {len(test_df)} test images.")
     mode = "copying" if args.copy else "symlinking"
-    print(f"Mode: {mode} files into {OUT_ROOT}/fold_N/class/")
+    print(f"Mode: {mode} files into {OUT_ROOT}/fold_N/class/ and {OUT_ROOT}/test/class/")
 
-    # Create fold_N/class/ directory tree up front
+    # Create fold_N/class/ and test/class/ directory trees up front
     for fold in range(N_FOLDS):
         for cls in CLASSES:
             os.makedirs(os.path.join(OUT_ROOT, f"fold_{fold}", cls), exist_ok=True)
+    for cls in CLASSES:
+        os.makedirs(os.path.join(OUT_ROOT, "test", cls), exist_ok=True)
 
     placed = 0
     missing = []
-    for row in df.itertuples(index=False):
+    for row in cv_df.itertuples(index=False):
         fold_dir = os.path.join(OUT_ROOT, f"fold_{row.fold}", row.dx)
         dst = os.path.join(fold_dir, row.image_id + ".jpg")
         try:
@@ -110,10 +102,27 @@ def main():
         place_file(src, dst, copy=args.copy)
         placed += 1
 
-    print(f"\nPlaced {placed} / {len(df)} images.")
+    test_placed = 0
+    test_missing = []
+    for row in test_df.itertuples(index=False):
+        test_dir = os.path.join(OUT_ROOT, "test", row.dx)
+        dst = os.path.join(test_dir, row.image_id + ".jpg")
+        try:
+            src = find_image(row.image_id)
+        except FileNotFoundError:
+            test_missing.append(row.image_id)
+            continue
+        place_file(src, dst, copy=args.copy)
+        test_placed += 1
+
+    print(f"\nPlaced {placed} / {len(cv_df)} trainval images.")
     if missing:
-        print(f"WARNING: {len(missing)} images from the CSV were not found "
+        print(f"WARNING: {len(missing)} images from the trainval CSV were not found "
               f"on disk (first few: {missing[:5]})")
+    print(f"Placed {test_placed} / {len(test_df)} test images.")
+    if test_missing:
+        print(f"WARNING: {len(test_missing)} images from the test CSV were not found "
+              f"on disk (first few: {test_missing[:5]})")
 
     # --- Verification: count files per fold/class dir and compare to CSV ---
     print("\n=== FILE COUNTS ON DISK (fold x class) ===")
@@ -128,11 +137,10 @@ def main():
         row_str = f"fold_{fold:<3}" + "".join(f"{n:>8}" for n in counts) + f"{sum(counts):>8}"
         print(row_str)
 
-    print(f"\nDone. Folder structure is at: {OUT_ROOT}/fold_<0-4>/<class>/")
+    print(f"\nDone. Folder structure is at: {OUT_ROOT}/fold_<0-4>/<class>/ and {OUT_ROOT}/test/<class>/")
     print("Note: this tree is derived output — HAM10000_kfold_split.csv "
-          "(fold assignments) is still the source of truth. If you ever "
-          "need to rebuild this tree (e.g. after fixing a bug in the CSV), "
-          "delete the kfold/ folder and rerun this script.")
+          "(trainval/test and fold assignments) remains the source of truth. "
+          "If you ever need to rebuild this tree, delete the kfold/ folder and rerun this script.")
 
 
 if __name__ == "__main__":

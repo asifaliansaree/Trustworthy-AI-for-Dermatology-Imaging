@@ -1,118 +1,194 @@
-"""
-Shared 5-fold lesion-wise stratified split for HAM10000.
+"""Create a lesion-wise stratified split for HAM10000 with a separate test set.
 
-Purpose
--------
-All three interns (robustness / explainability / fairness) need to train and
-evaluate on the *exact same* folds for the model comparison to be fair. This
-script produces that single shared split, per Dr. Bajwa's instruction:
+This script implements the recommended experimental protocol for reproducible
+medical-AI evaluation:
 
-  - 5 folds ("chunks")
-  - every fold contains all 7 lesion classes
-  - each fold's per-class percentage matches the overall HAM10000 class
-    distribution (stratified)
-  - zero leakage: all images belonging to the same lesion_id stay in the
-    SAME fold, since a lesion's images are near-duplicates/related views and
-    letting them span folds would let the model "see" a fold's own lesions
-    at train time (leakage). This is done via StratifiedGroupKFold, grouped
-    by lesion_id, stratified by lesion-level dx.
+1. Create a lesion-level, stratified split with train_test_split to reserve a
+   separate test set (10% of lesions, stratified by dx).
+2. Keep the test set completely independent from cross-validation.
+3. Apply StratifiedGroupKFold on the remaining train/validation lesions to
+   create five folds.
 
-Output
-------
-ham10000/data/HAM10000_kfold_split.csv — the original metadata CSV plus one
-new column, `fold` (int 0-4), at IMAGE level (every image of a lesion gets
-its lesion's fold number).
+The output CSV contains every original metadata column plus two new columns:
+- split: "trainval" or "test"
+- fold: 0, 1, 2, 3, 4 for trainval samples and -1 for test samples
 
-This does NOT touch or replace HAM10000_split.csv / split.py (the older
-80/10/10 single split) — that stays as-is. This is a new, separate artifact
-for the 5-fold CV comparison.
+This script is fully self-contained and can be executed with:
 
-Usage
------
     python ham10000/make_kfold_split.py
-
-Never regenerate this after the three of you start using it for comparison
-— treat HAM10000_kfold_split.csv like the old split.csv: generate once,
-commit it, always load it from disk after that. Regenerating with a
-different sklearn version or shuffle could reshuffle folds and silently
-invalidate any results already computed against the old fold assignment.
 """
+
+from pathlib import Path
+from typing import Tuple
+
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.model_selection import StratifiedGroupKFold, train_test_split
 
 N_FOLDS = 5
 RANDOM_STATE = 42
+TEST_SIZE = 0.10
 
-METADATA_CSV = "ham10000/data/HAM10000_metadata.csv"
-OUTPUT_CSV = "ham10000/data/HAM10000_kfold_split.csv"
+SCRIPT_DIR = Path(__file__).resolve().parent
+METADATA_CSV = SCRIPT_DIR / "data" / "HAM10000_metadata.csv"
+OUTPUT_CSV = SCRIPT_DIR / "data" / "HAM10000_kfold_split.csv"
+OUTPUT_CSV_RELATIVE = Path("ham10000/data/HAM10000_kfold_split.csv")
 
 
-def main():
-    df = pd.read_csv(METADATA_CSV)
+def load_metadata(metadata_path: Path) -> pd.DataFrame:
+    """Load the HAM10000 metadata CSV and validate the required columns."""
+    df = pd.read_csv(metadata_path)
+    required_columns = {"lesion_id", "dx"}
+    missing_columns = required_columns.difference(df.columns)
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
+    return df
 
-    print("=== INPUT ===")
-    print(f"Total images: {len(df)}")
-    print(f"Unique lesion_id: {df['lesion_id'].nunique()}")
 
-    # StratifiedGroupKFold needs one (X, y, groups) row per IMAGE, not per
-    # lesion — it looks at the y/groups arrays directly, and internally
-    # balances folds using the *group-level* label when every image of a
-    # group shares one label (true here: dx doesn't vary within lesion_id).
-    y = df["dx"]
-    groups = df["lesion_id"]
+def build_lesion_level_frame(metadata_df: pd.DataFrame) -> pd.DataFrame:
+    """Return one row per lesion_id with the associated diagnosis label."""
+    lesion_df = metadata_df.groupby("lesion_id", as_index=False).first()[["lesion_id", "dx"]]
+    lesion_df["dx"] = lesion_df["dx"].astype(str)
+    return lesion_df
+
+
+def split_lesions(lesion_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Split lesion IDs into separate test and trainval partitions."""
+    train_lesions_df, test_lesions_df = train_test_split(
+        lesion_df,
+        test_size=TEST_SIZE,
+        stratify=lesion_df["dx"],
+        random_state=RANDOM_STATE,
+    )
+    return train_lesions_df.reset_index(drop=True), test_lesions_df.reset_index(drop=True)
+
+
+def assign_splits_and_folds(
+    metadata_df: pd.DataFrame,
+    train_lesions_df: pd.DataFrame,
+    test_lesions_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Assign every image to either trainval or test and to a CV fold."""
+    test_lesions = set(test_lesions_df["lesion_id"])
+
+    split_df = metadata_df.copy()
+    split_df["split"] = split_df["lesion_id"].map(
+        lambda lesion_id: "test" if lesion_id in test_lesions else "trainval"
+    )
+    split_df["fold"] = -1
+
+    trainval_mask = split_df["split"] == "trainval"
+    trainval_df = split_df.loc[trainval_mask].copy()
+
+    if len(trainval_df) == 0:
+        raise ValueError("The trainval subset is empty after the lesion split.")
+
+    labels = trainval_df["dx"].astype(str).to_numpy()
+    groups = trainval_df["lesion_id"].to_numpy()
+    x_values = np.zeros(len(trainval_df), dtype=int)
 
     sgkf = StratifiedGroupKFold(
-        n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE
+        n_splits=N_FOLDS,
+        shuffle=True,
+        random_state=RANDOM_STATE,
     )
 
-    df["fold"] = -1
-    for fold_idx, (_, val_idx) in enumerate(sgkf.split(df, y, groups)):
-        df.loc[df.index[val_idx], "fold"] = fold_idx
+    for fold_idx, (_, val_idx) in enumerate(sgkf.split(x_values, labels, groups)):
+        fold_image_indices = trainval_df.index.to_numpy()[val_idx]
+        split_df.loc[fold_image_indices, "fold"] = fold_idx
 
-    assert (df["fold"] != -1).all(), "Every image must get a fold assigned."
+    return split_df
 
-    # --- Leakage check: no lesion_id may appear in more than one fold ---
-    lesion_fold_counts = df.groupby("lesion_id")["fold"].nunique()
-    leaking_lesions = lesion_fold_counts[lesion_fold_counts > 1]
-    assert len(leaking_lesions) == 0, (
-        f"LEAKAGE DETECTED: {len(leaking_lesions)} lesion_id(s) span "
-        f"multiple folds: {leaking_lesions.index.tolist()[:10]}..."
-    )
-    print("\nLeakage check passed: every lesion_id is confined to exactly one fold.")
 
-    # --- Verification: image counts per fold ---
-    print("\n=== IMAGES PER FOLD ===")
-    print(df["fold"].value_counts().sort_index())
+def validate_split(split_df: pd.DataFrame) -> None:
+    """Validate leakage rules, class coverage, and fold coverage."""
+    assert split_df["split"].notna().all(), "Every image must have a split assigned."
+    assert split_df["fold"].notna().all(), "Every image must have a fold assigned."
+    assert set(split_df["split"].unique()).issubset({"trainval", "test"}), "Unexpected split values."
 
-    # --- Verification: does every fold contain all 7 classes? ---
-    counts = df.groupby(["fold", "dx"]).size().unstack(fill_value=0)
-    print("\n=== IMAGE COUNTS PER FOLD x CLASS ===")
-    print(counts)
-    missing_classes = counts.columns[(counts == 0).any(axis=0)]
-    assert len(missing_classes) == 0, (
-        f"Fold(s) missing at least one class entirely: {missing_classes.tolist()}"
-    )
-    print("\nAll 5 folds contain all 7 classes.")
+    lesion_split_counts = split_df.groupby("lesion_id")["split"].nunique()
+    assert (lesion_split_counts == 1).all(), "A lesion_id appears in both trainval and test."
 
-    # --- Verification: per-fold class percentages vs overall percentages ---
-    overall_pct = df["dx"].value_counts(normalize=True).sort_index() * 100
-    fold_pct = counts.div(counts.sum(axis=1), axis=0) * 100
+    trainval_df = split_df.loc[split_df["split"] == "trainval"]
+    test_df = split_df.loc[split_df["split"] == "test"]
 
-    print("\n=== CLASS % PER FOLD (rows) vs OVERALL % (last row) ===")
+    assert (trainval_df["fold"].isin(range(N_FOLDS))).all(), "Trainval rows must have folds 0-4."
+    assert (test_df["fold"] == -1).all(), "Test rows must have fold = -1."
+
+    lesion_fold_counts = trainval_df.groupby("lesion_id")["fold"].nunique()
+    assert (lesion_fold_counts == 1).all(), "A lesion_id appears in multiple folds."
+
+    expected_classes = sorted(split_df["dx"].astype(str).unique())
+    test_classes = sorted(test_df["dx"].astype(str).unique())
+    assert test_classes == expected_classes, f"Test set is missing classes: expected {expected_classes}, got {test_classes}"
+
+    fold_counts = trainval_df.groupby(["fold", "dx"]).size().unstack(fill_value=0)
+    for fold_idx in range(N_FOLDS):
+        fold_class_counts = fold_counts.loc[fold_idx] if fold_idx in fold_counts.index else pd.Series(0, index=expected_classes)
+        missing_fold_classes = [cls for cls in expected_classes if int(fold_class_counts.get(cls, 0)) == 0]
+        assert not missing_fold_classes, f"Fold {fold_idx} is missing classes: {missing_fold_classes}"
+
+
+def print_reports(split_df: pd.DataFrame) -> None:
+    """Print a concise summary of the split and CV setup."""
+    trainval_df = split_df.loc[split_df["split"] == "trainval"]
+    test_df = split_df.loc[split_df["split"] == "test"]
+
+    print("=" * 34)
+    print("Separate Test Set")
+    print("=" * 34)
+    print(f"Total images: {len(split_df)}")
+    print(f"Total unique lesion_id: {split_df['lesion_id'].nunique()}")
+    print(f"Trainval lesions: {trainval_df['lesion_id'].nunique()}")
+    print(f"Test lesions: {test_df['lesion_id'].nunique()}")
+    print(f"Trainval images: {len(trainval_df)}")
+    print(f"Test images: {len(test_df)}")
+    print("\nTrainval class counts:")
+    print(trainval_df["dx"].value_counts().sort_index())
+    print("\nTest class counts:")
+    print(test_df["dx"].value_counts().sort_index())
+
+    print("\n" + "=" * 34)
+    print("Cross Validation")
+    print("=" * 34)
+    print(f"{N_FOLDS} folds")
+    print("No leakage")
+    print("Balanced stratification")
+
+    print("\nImages per fold:")
+    print(trainval_df["fold"].value_counts().sort_index())
+
+    fold_counts = trainval_df.groupby(["fold", "dx"]).size().unstack(fill_value=0)
+    print("\nFold x class counts:")
+    print(fold_counts)
+
+    overall_pct = trainval_df["dx"].value_counts(normalize=True).sort_index() * 100
+    fold_pct = fold_counts.div(fold_counts.sum(axis=1), axis=0) * 100
     display_pct = fold_pct.copy()
     display_pct.loc["overall"] = overall_pct
+    print("\nClass percentage per fold (rows) vs overall trainval percentage (last row):")
     print(display_pct.round(2))
 
     max_dev = (fold_pct - overall_pct).abs().values.max()
-    print(f"\nMax deviation from overall class % across all folds/classes: {max_dev:.2f} pts")
-    print("(Small deviations, typically well under 1-2 pts, are expected — "
-          "StratifiedGroupKFold trades a little stratification precision "
-          "for the hard no-leakage constraint on lesion_id groups.)")
+    print(f"\nMax deviation from overall class percentages: {max_dev:.2f} points")
 
-    df.to_csv(OUTPUT_CSV, index=False)
-    print(f"\nSaved to {OUTPUT_CSV}")
-    print("Share this file (or its git-committed path) with both other interns "
-          "— everyone should load folds from this single CSV.")
+    print("\n" + "=" * 34)
+    print("Saved")
+    print(OUTPUT_CSV_RELATIVE)
+    print("=" * 34)
+
+
+def main() -> None:
+    """Generate the shared HAM10000 split with independent test and CV folds."""
+    metadata_df = load_metadata(METADATA_CSV)
+    lesion_df = build_lesion_level_frame(metadata_df)
+    train_lesions_df, test_lesions_df = split_lesions(lesion_df)
+
+    split_df = assign_splits_and_folds(metadata_df, train_lesions_df, test_lesions_df)
+    validate_split(split_df)
+    print_reports(split_df)
+
+    split_df.to_csv(OUTPUT_CSV, index=False)
 
 
 if __name__ == "__main__":
