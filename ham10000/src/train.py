@@ -99,16 +99,44 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
     img_size = cfg["data"].get("img_size", 224)
     augment  = cfg["data"].get("augment", True)
 
+    # 5-fold CV mode: cfg["data"]["cv_kfold_csv"] + cfg["data"]["cv_val_fold"]
+    # select the shared lesion-wise StratifiedGroupKFold split instead of
+    # the legacy single HAM10000_split.csv train/val/test split. One fold
+    # is held out as validation; the other 4 are pooled as train. There is
+    # no held-out test set in this mode -- 5-fold CV reports mean/std of
+    # the val metric across all 5 rotations instead (see run_cv.py).
+    kfold_csv = cfg["data"].get("cv_kfold_csv")
+    val_fold  = cfg["data"].get("cv_val_fold")
+    cv_mode   = kfold_csv is not None and val_fold is not None
+
     datasets = {}
-    for split in ["train", "val", "test"]:
-        datasets[split] = HAM10000Dataset(
-            data_dir=data_dir,
-            split=split,
-            metadata_encoder=encoder,
-            img_size=img_size,
-            # Never augment val/test — only the training split gets it.
-            augment=(augment if split == "train" else False),
+    if cv_mode:
+        all_folds   = [0, 1, 2, 3, 4]
+        train_folds = [f for f in all_folds if f != val_fold]
+        print(f"[CV mode] kfold_csv={kfold_csv} | val_fold={val_fold} | "
+              f"train_folds={train_folds}")
+
+        datasets["train"] = HAM10000Dataset(
+            data_dir=data_dir, split="train", metadata_encoder=encoder,
+            img_size=img_size, augment=augment,
+            kfold_csv=kfold_csv, folds=train_folds,
         )
+        datasets["val"] = HAM10000Dataset(
+            data_dir=data_dir, split="val", metadata_encoder=encoder,
+            img_size=img_size, augment=False,
+            kfold_csv=kfold_csv, folds=[val_fold],
+        )
+        datasets["test"] = None
+    else:
+        for split in ["train", "val", "test"]:
+            datasets[split] = HAM10000Dataset(
+                data_dir=data_dir,
+                split=split,
+                metadata_encoder=encoder,
+                img_size=img_size,
+                # Never augment val/test — only the training split gets it.
+                augment=(augment if split == "train" else False),
+            )
 
     # WeightedRandomSampler — rebalances batches by class frequency.
     # This is a separate on/off switch (cfg["train"]["use_weighted_sampler"])
@@ -116,9 +144,18 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
     # experiment plan (sampler vs. focal, not combined).
     use_sampler = cfg["train"].get("use_weighted_sampler", False)
     if use_sampler:
-        split_csv = os.path.join(data_dir, "HAM10000_split.csv")
-        df        = pd.read_csv(split_csv)
-        train_df  = df[df["split"] == "train"]
+        if cv_mode:
+            # Same train_folds subset the train dataset above was built
+            # from, so the sampler's class counts match what the model
+            # actually trains on this rotation (each fold rotation has a
+            # slightly different train-side class distribution).
+            fold_csv_path = os.path.join(data_dir, kfold_csv)
+            df       = pd.read_csv(fold_csv_path)
+            train_df = df[df["fold"].isin(train_folds)]
+        else:
+            split_csv = os.path.join(data_dir, "HAM10000_split.csv")
+            df        = pd.read_csv(split_csv)
+            train_df  = df[df["split"] == "train"]
 
         labels       = train_df["dx"].map(CLASS_MAP).values
         class_counts = np.bincount(labels, minlength=len(CLASS_MAP))
@@ -161,7 +198,11 @@ def build_loaders(cfg: dict, encoder=None) -> dict:
             datasets["val"], batch_size=bs, shuffle=False,
             num_workers=nw, pin_memory=torch.cuda.is_available(),
         ),
-        "test": DataLoader(
+        # None in CV mode -- there is no held-out test set across 5-fold CV
+        # rotations (each fold plays val exactly once; see build_loaders
+        # docstring above). Nothing in main()'s training loop touches
+        # loaders["test"], so this is safe.
+        "test": None if datasets["test"] is None else DataLoader(
             datasets["test"], batch_size=bs, shuffle=False,
             num_workers=nw, pin_memory=torch.cuda.is_available(),
         ),

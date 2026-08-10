@@ -54,10 +54,26 @@ class HAM10000Dataset(Dataset):
 
     Args:
         data_dir:         path to ham10000/data/ (contains split CSV + images)
-        split:            'train', 'val', or 'test'
+        split:            'train', 'val', or 'test'. Only used to pick the
+                           transform (train gets augmentation, val/test
+                           don't) and for the printed summary line -- when
+                           kfold_csv/folds are given, it no longer selects
+                           rows (folds does that instead).
         metadata_encoder: optional MetadataEncoder instance
         img_size:         image size (default 224)
         augment:          enable training augmentation (default True)
+        kfold_csv:        optional filename (relative to data_dir) of a
+                           fold-assignment CSV produced by
+                           make_kfold_split.py (must have a 'fold' column).
+                           When given together with `folds`, rows are
+                           selected by fold membership instead of by the
+                           legacy 'split' column in HAM10000_split.csv.
+                           This is for the shared 5-fold lesion-wise
+                           StratifiedGroupKFold CV split used to compare
+                           the three interns' models on identical folds.
+        folds:             list of int fold numbers (0-4) to include when
+                           kfold_csv is set, e.g. [0,1,2,3] for a training
+                           set that excludes fold 4 as validation.
     """
 
     def __init__(
@@ -67,14 +83,24 @@ class HAM10000Dataset(Dataset):
         metadata_encoder  = None,
         img_size:         int  = 224,
         augment:          bool = True,
+        kfold_csv:        Optional[str]  = None,
+        folds:            Optional[list] = None,
     ):
         assert split in ("train", "val", "test"), \
             f"split must be train/val/test, got '{split}'"
 
-        csv_path = os.path.join(data_dir, "HAM10000_split.csv")
-        df       = pd.read_csv(csv_path)
-
-        self.df               = df[df["split"] == split].reset_index(drop=True)
+        if kfold_csv is not None and folds is not None:
+            csv_path = os.path.join(data_dir, kfold_csv)
+            df       = pd.read_csv(csv_path)
+            assert "fold" in df.columns, (
+                f"{csv_path} has no 'fold' column -- make sure it was "
+                f"produced by make_kfold_split.py, not HAM10000_split.csv."
+            )
+            self.df = df[df["fold"].isin(folds)].reset_index(drop=True)
+        else:
+            csv_path = os.path.join(data_dir, "HAM10000_split.csv")
+            df       = pd.read_csv(csv_path)
+            self.df  = df[df["split"] == split].reset_index(drop=True)
         self.data_dir         = data_dir
         self.split            = split
         self.metadata_encoder = metadata_encoder
