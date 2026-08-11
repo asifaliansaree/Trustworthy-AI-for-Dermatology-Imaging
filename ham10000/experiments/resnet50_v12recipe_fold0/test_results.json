@@ -1,0 +1,18 @@
+{
+    "experiment": "resnet50_v12recipe",
+    "checkpoint": "ham10000/checkpoints/resnet50_v12recipe_fold0/best_model.pt",
+    "split": "test",
+    "epoch": 21,
+    "balanced_accuracy": 0.7317926977136661,
+    "macro_f1": 0.7094037468318347,
+    "macro_auc": 0.9511377049421209,
+    "per_class_f1": {
+        "mel": 0.557,
+        "nv": 0.8998,
+        "bcc": 0.7156,
+        "akiec": 0.6053,
+        "bkl": 0.6763,
+        "df": 0.6452,
+        "vasc": 0.8667
+    }
+}

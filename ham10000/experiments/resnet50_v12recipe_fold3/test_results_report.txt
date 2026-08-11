@@ -1,0 +1,17 @@
+Experiment : resnet50_v12recipe
+Checkpoint : ham10000/checkpoints/resnet50_v12recipe_fold3/best_model.pt
+Split      : test
+
+              precision    recall  f1-score   support
+
+         mel     0.4779    0.5702    0.5200       114
+          nv     0.9135    0.8685    0.8904       669
+         bcc     0.6406    0.7885    0.7069        52
+       akiec     0.4792    0.6389    0.5476        36
+         bkl     0.6263    0.5962    0.6108       104
+          df     0.8571    0.4000    0.5455        15
+        vasc     0.8571    0.8571    0.8571        14
+
+    accuracy                         0.7869      1004
+   macro avg     0.6931    0.6742    0.6683      1004
+weighted avg     0.8030    0.7869    0.7920      1004
