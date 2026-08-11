@@ -250,8 +250,13 @@ def main():
     else:
         raise ValueError("--weights required when ensembling more than 2 models.")
 
+    # IMPORTANT: target_names must follow the label-index order used by
+    # CLASS_MAP (how TestDataset encodes y_true), NOT the alphabetical
+    # CLASSES list — those two orderings differ and previously caused
+    # every row in this report to be mislabeled.
+    ordered_target_names = [c for c, i in sorted(CLASS_MAP.items(), key=lambda kv: kv[1])]
     report = classification_report(
-        all_labels, preds, target_names=CLASSES, digits=4, zero_division=0
+        all_labels, preds, target_names=ordered_target_names, digits=4, zero_division=0
     )
     print(f"\n{report}")
 
