@@ -79,38 +79,31 @@ def base_transform(img_size: int) -> T.Compose:
 
 
 class TestDataset(Dataset):
-    """Same test split logic as evaluate_tta.py — must match exactly across
-    models being ensembled, or you're averaging predictions on different
-    example orderings without realizing it."""
+    """Reads from kfold/test/<class_name>/<image>.jpg folder structure."""
 
     def __init__(self, data_dir: str, encoder=None):
-        df = pd.read_csv(os.path.join(data_dir, "HAM10000_split.csv"))
-        self.df = df[df["split"] == "test"].reset_index(drop=True)
-        self.dirs = [
-            os.path.join(data_dir, "HAM10000_images_part_1"),
-            os.path.join(data_dir, "HAM10000_images_part_2"),
-        ]
+        test_dir = os.path.join(data_dir, "kfold", "test")
+        self.samples = []
+        for class_name in sorted(os.listdir(test_dir)):
+            class_dir = os.path.join(test_dir, class_name)
+            if not os.path.isdir(class_dir):
+                continue
+            for fname in os.listdir(class_dir):
+                if fname.lower().endswith((".jpg", ".jpeg", ".png")):
+                    self.samples.append((os.path.join(class_dir, fname), class_name))
         self.encoder = encoder
 
     def __len__(self):
-        return len(self.df)
-
-    def _find(self, image_id):
-        for d in self.dirs:
-            p = os.path.join(d, image_id + ".jpg")
-            if os.path.exists(p):
-                return p
-        raise FileNotFoundError(image_id)
+        return len(self.samples)
 
     def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        img = Image.open(self._find(row["image_id"])).convert("RGB")
-        label = CLASS_MAP[row["dx"]]
+        filepath, class_name = self.samples[idx]
+        img = Image.open(filepath).convert("RGB")
+        label = CLASS_MAP[class_name]
         if self.encoder is not None:
+            row = {"dx": class_name}
             return img, self.encoder.encode(row), label
         return img, label
-
-
 @torch.no_grad()
 def run_model(model, dataset, device, img_size, n_passes, use_meta):
     """Returns (labels, avg_softmax_probs) for one model, averaged over

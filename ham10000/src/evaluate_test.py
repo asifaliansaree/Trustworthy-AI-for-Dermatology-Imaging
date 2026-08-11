@@ -96,7 +96,7 @@ def main():
     encoder = None
     if use_metadata:
         encoder = MetadataEncoder(
-            os.path.join(cfg["data"]["data_dir"], "HAM10000_split.csv")
+            os.path.join(cfg["data"]["data_dir"], "HAM10000_kfold_split.csv")
         )
 
     # ── DataLoader ────────────────────────────────────────────
@@ -104,6 +104,8 @@ def main():
         data_dir=cfg["data"]["data_dir"],
         split=args.split,
         metadata_encoder=encoder,
+        kfold_csv="HAM10000_kfold_split.csv" if args.split == "test" else None,
+        folds=[-1] if args.split == "test" else None,
     )
     loader = DataLoader(
         ds,
