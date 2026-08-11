@@ -145,7 +145,7 @@ def main():
         if not os.path.exists(best_path):
             print(f"fold {fold}: MISSING best_model.pt at {best_path}")
             continue
-        payload = torch.load(best_path, map_location="cpu")
+        payload = torch.load(best_path, map_location="cpu", weights_only=False)
         bal_accs[fold] = payload["val_balanced_accuracy"]
         print(f"fold {fold}: val_balanced_accuracy = {bal_accs[fold]:.4f}  "
               f"(epoch {payload['epoch']})")
