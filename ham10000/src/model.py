@@ -1,7 +1,7 @@
 """
 DermaNet — configurable backbone for HAM10000 classification.
 Supported architectures: resnet18, resnet50, resnet101, densenet121,
-efficientnet_b0, efficientnet_b1, efficientnet_v2_s
+efficientnet_b0, efficientnet_b1, efficientnet_v2_s, convnext_tiny
 Supports optional metadata late-fusion and staged fine-tuning.
 """
 import torch
@@ -46,11 +46,25 @@ ARCH_REGISTRY = {
         models.EfficientNet_V2_S_Weights.IMAGENET1K_V1,
         1280,
     ),
+    "convnext_tiny": (
+        models.convnext_tiny,
+        models.ConvNeXt_Tiny_Weights.IMAGENET1K_V1,
+        768,
+    ),
 }
 
 # Architectures shaped like ResNet: Sequential ending in (avgpool, fc) --
 # strip the last child to get a pooled feature extractor.
 _RESNET_FAMILY = {"resnet18", "resnet50", "resnet101"}
+
+# ConvNeXt's classifier is Sequential(LayerNorm2d, Flatten, Linear) -- unlike
+# EfficientNet/DenseNet, that LayerNorm2d is doing real work (ConvNeXt blocks
+# are pre-norm and expect a final normalization before the head, there's no
+# BatchNorm anywhere else in the network to substitute). Identity-ing the
+# whole classifier like the EfficientNet/DenseNet branch does would feed the
+# new Linear head raw un-normalized conv features and throw away that
+# pretrained norm. Keep LayerNorm2d + Flatten, drop only the final Linear.
+_CONVNEXT_FAMILY = {"convnext_tiny"}
 
 
 class DermaNet(nn.Module):
@@ -94,6 +108,11 @@ class DermaNet(nn.Module):
         # Strip classifier head — keep only feature extractor
         if arch in _RESNET_FAMILY:
             self.backbone = nn.Sequential(*list(backbone.children())[:-1])
+        elif arch in _CONVNEXT_FAMILY:
+            # backbone.classifier = Sequential(LayerNorm2d, Flatten(1), Linear)
+            # Keep [0] and [1] (norm + flatten), drop [2] (the old Linear).
+            backbone.classifier = nn.Sequential(*list(backbone.classifier.children())[:-1])
+            self.backbone = backbone
         else:
             # EfficientNet / DenseNet variants: replace classifier with Identity.
             # DenseNet's forward() does its own ReLU + adaptive pool internally
