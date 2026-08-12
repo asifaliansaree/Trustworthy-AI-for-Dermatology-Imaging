@@ -20,12 +20,12 @@ from sklearn.utils.class_weight import compute_class_weight
 
 
 CLASS_MAP = {
-    "mel": 0,
-    "nv": 1,
-    "bcc": 2,
-    "akiec": 3,
-    "bkl": 4,
-    "df": 5,
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
     "vasc": 6,
 }
 
