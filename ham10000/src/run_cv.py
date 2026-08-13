@@ -46,6 +46,7 @@ fold that already finished.
 """
 import argparse
 import copy
+import json
 import os
 import subprocess
 import sys
@@ -57,7 +58,19 @@ import yaml
 
 N_FOLDS = 5
 CLASS_MAP = {"mel": 0, "nv": 1, "bcc": 2, "akiec": 3, "bkl": 4, "df": 5, "vasc": 6}
+CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)  # index order -- matches evaluate.py's CLASSES
 TMP_CONFIG_DIR = "ham10000/configs/_cv_tmp"
+
+# This file lives at <REPO_ROOT>/ham10000/src/run_cv.py, so REPO_ROOT is
+# two levels up. Every relative path used in this script (TMP_CONFIG_DIR,
+# the train.py subprocess call) and in the YAML configs (checkpoint_dir,
+# data_dir, etc.) is written relative to REPO_ROOT -- so we chdir there
+# explicitly at import time instead of trusting the caller's cwd. This
+# makes the script work identically whether it's invoked as
+# `python ham10000/src/run_cv.py`, `python /abs/path/run_cv.py`, or from
+# any other directory (e.g. after os.chdir() elsewhere in a notebook).
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(REPO_ROOT)
 
 
 def compute_fold_class_counts(data_dir: str, kfold_csv: str, train_folds: list) -> list:
@@ -128,6 +141,7 @@ def main():
 
     with open(args.config) as f:
         base_cfg = yaml.safe_load(f)
+    base_experiment_name = base_cfg["logging"]["experiment_name"]
 
     ckpt_dirs = {}
     for fold in args.folds:
@@ -149,8 +163,18 @@ def main():
         "val_macro_f1":          "macro_f1",
         "val_precision":         "macro_precision",
         "val_recall":            "macro_recall",
+        "val_ece":               "ece",
+        "val_roc_auc_macro":     "roc_auc_macro",
     }
     fold_metrics = {name: {} for name in metric_keys}
+
+    # Per-class (per-lesion) metrics -- one of these three dicts per fold,
+    # each keyed by lesion name (e.g. fold_per_class["val_per_class_f1"][2]["mel"]).
+    per_class_keys = ["val_per_class_f1", "val_per_class_precision", "val_per_class_recall"]
+    fold_per_class = {name: {} for name in per_class_keys}
+
+    fold_confusion_matrices = {}
+    fold_epochs = {}
 
     for fold, ckpt_dir in ckpt_dirs.items():
         best_path = os.path.join(ckpt_dir, "best_model.pt")
@@ -158,6 +182,7 @@ def main():
             print(f"fold {fold}: MISSING best_model.pt at {best_path}")
             continue
         payload = torch.load(best_path, map_location="cpu", weights_only=False)
+        fold_epochs[fold] = payload.get("epoch")
 
         line = f"fold {fold} (epoch {payload['epoch']}): "
         parts = []
@@ -172,6 +197,13 @@ def main():
             parts.append(f"{label}={val:.4f}")
         print(line + "  ".join(parts))
 
+        for payload_key in per_class_keys:
+            if payload_key in payload:
+                fold_per_class[payload_key][fold] = payload[payload_key]
+
+        if "val_confusion_matrix" in payload:
+            fold_confusion_matrices[fold] = payload["val_confusion_matrix"]
+
     print("-" * 70)
     for payload_key, label in metric_keys.items():
         vals = list(fold_metrics[payload_key].values())
@@ -179,7 +211,59 @@ def main():
             continue
         print(f"Mean {label:<20s} over {len(vals)} fold(s): "
               f"{np.mean(vals):.4f} +/- {np.std(vals):.4f}")
+
+    print("-" * 70)
+    print("Per-lesion (mean +/- std across folds):")
+    per_class_summary = {payload_key: {} for payload_key in per_class_keys}
+    for payload_key in per_class_keys:
+        label = payload_key.replace("val_per_class_", "")
+        for cls in CLASSES:
+            vals = [d[cls] for d in fold_per_class[payload_key].values() if cls in d]
+            if not vals:
+                continue
+            mean_v, std_v = float(np.mean(vals)), float(np.std(vals))
+            per_class_summary[payload_key][cls] = {"mean": mean_v, "std": std_v, "n_folds": len(vals)}
+            print(f"  {cls:<7s} {label:<10s}: {mean_v:.4f} +/- {std_v:.4f}")
     print("=" * 70)
+
+    # ── Write everything to one JSON so it doesn't just live in console
+    # output -- overall (mean/std/per-fold) + per-lesion (mean/std/per-fold)
+    # + confusion matrices, all keyed by fold. ──────────────────────
+    results_dir = "ham10000/results"
+    os.makedirs(results_dir, exist_ok=True)
+    out_path = os.path.join(results_dir, f"{base_experiment_name}_cv_summary.json")
+
+    summary = {
+        "experiment": base_experiment_name,
+        "folds_run": list(ckpt_dirs.keys()),
+        "fold_epochs": fold_epochs,
+        "overall": {
+            label: {
+                "mean": float(np.mean(list(fold_metrics[key].values()))),
+                "std": float(np.std(list(fold_metrics[key].values()))),
+                "per_fold": {str(f): float(v) for f, v in fold_metrics[key].items()},
+            }
+            for key, label in metric_keys.items() if fold_metrics[key]
+        },
+        "per_lesion": {
+            payload_key.replace("val_per_class_", ""): {
+                cls: {
+                    **per_class_summary[payload_key][cls],
+                    "per_fold": {
+                        str(f): float(d[cls])
+                        for f, d in fold_per_class[payload_key].items() if cls in d
+                    },
+                }
+                for cls in per_class_summary[payload_key]
+            }
+            for payload_key in per_class_keys
+        },
+        "confusion_matrices_per_fold": {str(f): m for f, m in fold_confusion_matrices.items()},
+    }
+
+    with open(out_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"\nWrote full CV summary (overall + per-lesion + confusion matrices) to {out_path}")
 
 
 if __name__ == "__main__":
