@@ -515,16 +515,19 @@ def main(config_path: str):
 
     log_path   = os.path.join(log_dir, "training_log.csv")
     best_ckpt  = os.path.join(ckpt_dir, "best_model.pt")
+    best_ckpt_macro_f1 = os.path.join(ckpt_dir, "best_model_macro_f1.pt")
     last_ckpt  = os.path.join(ckpt_dir, "last_model.pt")
 
     if os.path.exists(log_path):
         os.remove(log_path)
 
-    best_val     = -float("inf")
-    no_improve   = 0
-    epochs       = cfg["train"]["epochs"]
-    smooth_win   = cfg["train"].get("best_metric_smoothing_window", 1)
-    ckpt_score_hist = []
+    best_bal_acc   = -float("inf")
+    best_macro_f1  = -float("inf")
+    no_improve     = 0
+    epochs         = cfg["train"]["epochs"]
+    smooth_win     = cfg["train"].get("best_metric_smoothing_window", 1)
+    bal_acc_hist   = []
+    macro_f1_hist  = []
 
     print(f"\nTraining for {epochs} epochs — "
           f"loss={cfg.get('loss',{}).get('name','cross_entropy')}, "
@@ -577,23 +580,16 @@ def main(config_path: str):
         val_precision = metrics["macro_precision"]
         val_recall    = metrics["macro_recall"]
 
-        # Composite checkpoint-selection score, not balanced_accuracy alone.
-        # balanced_accuracy IS macro recall (mean of per-class recall), so
-        # selecting "best" on it alone systematically favors epochs that
-        # over-predict rare classes (higher recall, but dragging their
-        # precision down) over epochs with a better overall precision/recall
-        # balance. macro_f1 is precision- and recall-sensitive together, so
-        # averaging the two keeps "best" checkpoint selection aligned with
-        # both stated goals (best F1/precision/recall AND high balanced
-        # accuracy) instead of silently only optimizing for the second.
-        # ckpt_score_weight defaults to 0.5 (equal weight); set closer to
-        # 1.0 in the config to lean back toward pure balanced_accuracy
-        # selection if a specific run calls for it.
-        bal_acc_weight = cfg["train"].get("ckpt_score_weight", 0.5)
-        val_ckpt_score = (
-            bal_acc_weight * val_bal_acc
-            + (1 - bal_acc_weight) * val_macro_f1
-        )
+        # Per-lesion breakdown + extra calibration/discrimination metrics --
+        # previously computed by evaluate.compute_metrics() every epoch and
+        # then discarded. Stored in the checkpoint payload below so
+        # run_cv.py can aggregate per-lesion performance across folds.
+        val_per_class_f1        = metrics["per_class_f1"]
+        val_per_class_precision = metrics["per_class_precision"]
+        val_per_class_recall    = metrics["per_class_recall"]
+        val_confusion_matrix    = metrics["confusion_matrix"].tolist()
+        val_ece                 = metrics["ece"]
+        val_roc_auc_macro       = metrics.get("roc_auc_macro", float("nan"))
 
         # Restore the live weights after EMA eval so training resumes
         # from where it left off (previously this just re-copied the
@@ -605,8 +601,11 @@ def main(config_path: str):
         # Scheduler step — cosine/plateau step once per epoch here.
         # onecycle is stepped per-batch inside run_epoch() instead, so
         # it is explicitly skipped in this block.
+        # NOTE: plateau now steps on val_bal_acc directly (no more composite
+        # ckpt_score to step on) -- change to val_macro_f1 here if you'd
+        # rather the LR schedule track that metric instead.
         if sched_name == "plateau":
-            scheduler.step(val_ckpt_score)
+            scheduler.step(val_bal_acc)
         elif sched_name == "cosine":
             scheduler.step()
         # onecycle: intentionally no epoch-level step -- handled per-batch above.
@@ -619,8 +618,7 @@ def main(config_path: str):
             f"acc={val_accuracy:.4f} | bal_acc={val_bal_acc:.4f} | "
             f"macro_f1={val_macro_f1:.4f} | "
             f"precision={val_precision:.4f} | recall={val_recall:.4f} | "
-            f"ckpt_score={val_ckpt_score:.4f} | lr={lr_now:.2e} | "
-            f"{elapsed:.0f}s"
+            f"lr={lr_now:.2e} | {elapsed:.0f}s"
         )
 
         # CSV log
@@ -629,8 +627,7 @@ def main(config_path: str):
             if epoch == 1:
                 w.writerow(["epoch","train_loss","val_loss",
                              "val_accuracy","val_bal_acc","val_macro_f1",
-                             "val_precision","val_recall",
-                             "val_ckpt_score","lr"])
+                             "val_precision","val_recall","lr"])
             w.writerow([epoch,
                         round(tr_loss, 4),
                         round(val_loss, 4),
@@ -639,21 +636,25 @@ def main(config_path: str):
                         round(val_macro_f1, 4),
                         round(val_precision, 4),
                         round(val_recall, 4),
-                        round(val_ckpt_score, 4),
                         round(lr_now, 6)])
 
         # Checkpointing
         payload = {
-            "epoch":               epoch,
-            "model_state_dict":    model.state_dict(),
-            "optimizer_state":     optimizer.state_dict(),
-            "val_balanced_accuracy": val_bal_acc,
-            "val_accuracy":         val_accuracy,
-            "val_macro_f1":         val_macro_f1,
-            "val_precision":        val_precision,
-            "val_recall":           val_recall,
-            "val_ckpt_score":       val_ckpt_score,
-            "config":              cfg,
+            "epoch":                   epoch,
+            "model_state_dict":        model.state_dict(),
+            "optimizer_state":         optimizer.state_dict(),
+            "val_balanced_accuracy":   val_bal_acc,
+            "val_accuracy":            val_accuracy,
+            "val_macro_f1":            val_macro_f1,
+            "val_precision":           val_precision,
+            "val_recall":              val_recall,
+            "val_per_class_f1":        val_per_class_f1,
+            "val_per_class_precision": val_per_class_precision,
+            "val_per_class_recall":    val_per_class_recall,
+            "val_confusion_matrix":    val_confusion_matrix,
+            "val_ece":                 val_ece,
+            "val_roc_auc_macro":       val_roc_auc_macro,
+            "config":                  cfg,
         }
         torch.save(payload, last_ckpt)
 
@@ -663,35 +664,52 @@ def main(config_path: str):
         else:
             print("✗ ERROR: last_model.pt was NOT saved")
 
-        # Smooth the metric used for "best" selection so a single lucky/unlucky
-        # epoch (see the noisy zig-zag in earlier runs) can't get checkpointed
-        # as best just because it happened to land on a spike. Smoothing is
-        # applied to val_ckpt_score now (bal_acc + macro_f1 composite),
-        # consistent with what "best" actually means below.
-        ckpt_score_hist.append(val_ckpt_score)
-        window       = ckpt_score_hist[-smooth_win:]
-        smoothed_val = sum(window) / len(window)
+        # "Best" is now tracked SEPARATELY for bal_acc and macro_f1 --
+        # no composite score merging the two. Each gets its own smoothed
+        # history (same smoothing window, independent running averages)
+        # and its own saved checkpoint file, so neither metric's
+        # "best epoch" gets silently distorted by averaging against the
+        # other. best_model.pt keeps the original filename (selected by
+        # bal_acc) so anything downstream reading that path -- e.g.
+        # run_cv.py -- doesn't need to change. best_model_macro_f1.pt is
+        # the new, additional file for whoever wants the macro_f1-best
+        # epoch specifically.
+        bal_acc_hist.append(val_bal_acc)
+        macro_f1_hist.append(val_macro_f1)
+        smoothed_bal_acc  = sum(bal_acc_hist[-smooth_win:])  / len(bal_acc_hist[-smooth_win:])
+        smoothed_macro_f1 = sum(macro_f1_hist[-smooth_win:]) / len(macro_f1_hist[-smooth_win:])
 
-        if smoothed_val > best_val:
-            best_val = smoothed_val
-            no_improve = 0
+        improved_any = False
 
+        if smoothed_bal_acc > best_bal_acc:
+            best_bal_acc = smoothed_bal_acc
+            improved_any = True
             torch.save(payload, best_ckpt)
-
             if os.path.exists(best_ckpt):
                 size = os.path.getsize(best_ckpt) / (1024 * 1024)
-                print(f"✓ best_model.pt saved ({size:.2f} MB)")
+                print(f"✓ best_model.pt saved ({size:.2f} MB) "
+                      f"[new best bal_acc: raw={val_bal_acc:.4f}, "
+                      f"smoothed={smoothed_bal_acc:.4f}]")
             else:
                 print("✗ ERROR: best_model.pt was NOT saved")
 
-            print("Checkpoint directory contents:")
-            print(os.listdir(ckpt_dir))
+        if smoothed_macro_f1 > best_macro_f1:
+            best_macro_f1 = smoothed_macro_f1
+            improved_any = True
+            torch.save(payload, best_ckpt_macro_f1)
+            if os.path.exists(best_ckpt_macro_f1):
+                size = os.path.getsize(best_ckpt_macro_f1) / (1024 * 1024)
+                print(f"✓ best_model_macro_f1.pt saved ({size:.2f} MB) "
+                      f"[new best macro_f1: raw={val_macro_f1:.4f}, "
+                      f"smoothed={smoothed_macro_f1:.4f}]")
+            else:
+                print("✗ ERROR: best_model_macro_f1.pt was NOT saved")
 
-            print(
-                f"  → New best (raw ckpt_score={val_ckpt_score:.4f} "
-                f"[bal_acc={val_bal_acc:.4f}, macro_f1={val_macro_f1:.4f}], "
-                f"smoothed={smoothed_val:.4f}), saved."
-            )
+        # Early stopping: patience counts epochs where NEITHER metric
+        # improved (previously counted against the single composite --
+        # this is the direct equivalent now that there are two).
+        if improved_any:
+            no_improve = 0
         else:
             no_improve += 1
             if no_improve >= early_stop:
@@ -699,7 +717,8 @@ def main(config_path: str):
                 break
 
     print("\n" + "=" * 60)
-    print(f"Best val checkpoint score (smoothed, bal_acc+macro_f1 composite): {best_val:.4f}")
+    print(f"Best val bal_acc  (smoothed): {best_bal_acc:.4f}  -> best_model.pt")
+    print(f"Best val macro_f1 (smoothed): {best_macro_f1:.4f}  -> best_model_macro_f1.pt")
     print(f"Checkpoint directory: {os.path.abspath(ckpt_dir)}")
 
     if os.path.exists(ckpt_dir):
