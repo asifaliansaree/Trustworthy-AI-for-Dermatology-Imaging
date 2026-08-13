@@ -55,5 +55,10 @@ train:
   # changed vs. densenet121_v12recipe -- keep it isolated so you can
   # attribute any F1/precision movement to this fix specifically.
   sampler_power: 0.5
+  # New knob (see train.py): "best" checkpoint is now
+  # ckpt_score_weight * bal_acc + (1-ckpt_score_weight) * macro_f1, not raw
+  # bal_acc. 0.5 = equal weight on your two stated goals (max precision/
+  # recall/F1 AND max balanced accuracy).
+  ckpt_score_weight: 0.5
   weight_decay: 0.0003
   best_metric_smoothing_window: 5

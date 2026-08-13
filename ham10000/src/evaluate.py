@@ -1,6 +1,9 @@
 import numpy as np
 import torch
-from sklearn.metrics import balanced_accuracy_score, f1_score, confusion_matrix, roc_auc_score
+from sklearn.metrics import (
+    balanced_accuracy_score, f1_score, precision_score, recall_score,
+    confusion_matrix, roc_auc_score,
+)
 
 CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
 
@@ -66,10 +69,27 @@ def compute_ece(y_true, y_probs, n_bins: int = 15) -> float:
 def compute_metrics(y_true, y_pred, y_probs):
     metrics = {}
     metrics['balanced_accuracy'] = balanced_accuracy_score(y_true, y_pred)
+
     per_class_f1 = f1_score(y_true, y_pred, average=None,
                              labels=list(range(len(CLASSES))), zero_division=0)
     metrics['per_class_f1'] = dict(zip(CLASSES, per_class_f1.round(4)))
     metrics['macro_f1'] = float(per_class_f1.mean())
+
+    # Precision/recall were previously missing entirely -- macro_f1 alone
+    # can't tell you WHICH side (precision or recall) is dragging a class
+    # down, and balanced_accuracy IS macro recall, so without this you're
+    # blind to precision. Same pattern as per_class_f1 above: per-class dict
+    # + macro average, zero_division=0 so an unpredicted class reports 0.0
+    # instead of a sklearn warning + NaN.
+    per_class_precision = precision_score(y_true, y_pred, average=None,
+                             labels=list(range(len(CLASSES))), zero_division=0)
+    per_class_recall = recall_score(y_true, y_pred, average=None,
+                             labels=list(range(len(CLASSES))), zero_division=0)
+    metrics['per_class_precision'] = dict(zip(CLASSES, per_class_precision.round(4)))
+    metrics['per_class_recall']    = dict(zip(CLASSES, per_class_recall.round(4)))
+    metrics['macro_precision'] = float(per_class_precision.mean())
+    metrics['macro_recall']    = float(per_class_recall.mean())
+
     metrics['confusion_matrix'] = confusion_matrix(y_true, y_pred, labels=list(range(len(CLASSES))))
     metrics['ece'] = compute_ece(y_true, y_probs)
     try:

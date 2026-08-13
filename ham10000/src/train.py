@@ -460,7 +460,7 @@ def main(config_path: str):
     no_improve   = 0
     epochs       = cfg["train"]["epochs"]
     smooth_win   = cfg["train"].get("best_metric_smoothing_window", 1)
-    bal_acc_hist = []
+    ckpt_score_hist = []
 
     print(f"\nTraining for {epochs} epochs — "
           f"loss={cfg.get('loss',{}).get('name','cross_entropy')}, "
@@ -507,7 +507,28 @@ def main(config_path: str):
             model, loaders["val"], device, use_meta
         )
         metrics = evaluate.compute_metrics(y_true, y_pred, y_probs)
-        val_bal_acc = metrics["balanced_accuracy"]
+        val_bal_acc   = metrics["balanced_accuracy"]
+        val_macro_f1  = metrics["macro_f1"]
+        val_precision = metrics["macro_precision"]
+        val_recall    = metrics["macro_recall"]
+
+        # Composite checkpoint-selection score, not balanced_accuracy alone.
+        # balanced_accuracy IS macro recall (mean of per-class recall), so
+        # selecting "best" on it alone systematically favors epochs that
+        # over-predict rare classes (higher recall, but dragging their
+        # precision down) over epochs with a better overall precision/recall
+        # balance. macro_f1 is precision- and recall-sensitive together, so
+        # averaging the two keeps "best" checkpoint selection aligned with
+        # both stated goals (best F1/precision/recall AND high balanced
+        # accuracy) instead of silently only optimizing for the second.
+        # ckpt_score_weight defaults to 0.5 (equal weight); set closer to
+        # 1.0 in the config to lean back toward pure balanced_accuracy
+        # selection if a specific run calls for it.
+        bal_acc_weight = cfg["train"].get("ckpt_score_weight", 0.5)
+        val_ckpt_score = (
+            bal_acc_weight * val_bal_acc
+            + (1 - bal_acc_weight) * val_macro_f1
+        )
 
         # Restore the live weights after EMA eval so training resumes
         # from where it left off (previously this just re-copied the
@@ -520,7 +541,7 @@ def main(config_path: str):
         # onecycle is stepped per-batch inside run_epoch() instead, so
         # it is explicitly skipped in this block.
         if sched_name == "plateau":
-            scheduler.step(val_bal_acc)
+            scheduler.step(val_ckpt_score)
         elif sched_name == "cosine":
             scheduler.step()
         # onecycle: intentionally no epoch-level step -- handled per-batch above.
@@ -530,7 +551,9 @@ def main(config_path: str):
         print(
             f"Epoch {epoch:3d}/{epochs} | "
             f"train={tr_loss:.4f} | val={val_loss:.4f} | "
-            f"bal_acc={val_bal_acc:.4f} | lr={lr_now:.2e} | "
+            f"bal_acc={val_bal_acc:.4f} | macro_f1={val_macro_f1:.4f} | "
+            f"precision={val_precision:.4f} | recall={val_recall:.4f} | "
+            f"ckpt_score={val_ckpt_score:.4f} | lr={lr_now:.2e} | "
             f"{elapsed:.0f}s"
         )
 
@@ -539,11 +562,17 @@ def main(config_path: str):
             w = csv.writer(f)
             if epoch == 1:
                 w.writerow(["epoch","train_loss","val_loss",
-                             "val_bal_acc","lr"])
+                             "val_bal_acc","val_macro_f1",
+                             "val_precision","val_recall",
+                             "val_ckpt_score","lr"])
             w.writerow([epoch,
                         round(tr_loss, 4),
                         round(val_loss, 4),
                         round(val_bal_acc, 4),
+                        round(val_macro_f1, 4),
+                        round(val_precision, 4),
+                        round(val_recall, 4),
+                        round(val_ckpt_score, 4),
                         round(lr_now, 6)])
 
         # Checkpointing
@@ -552,6 +581,10 @@ def main(config_path: str):
             "model_state_dict":    model.state_dict(),
             "optimizer_state":     optimizer.state_dict(),
             "val_balanced_accuracy": val_bal_acc,
+            "val_macro_f1":         val_macro_f1,
+            "val_precision":        val_precision,
+            "val_recall":           val_recall,
+            "val_ckpt_score":       val_ckpt_score,
             "config":              cfg,
         }
         torch.save(payload, last_ckpt)
@@ -564,9 +597,11 @@ def main(config_path: str):
 
         # Smooth the metric used for "best" selection so a single lucky/unlucky
         # epoch (see the noisy zig-zag in earlier runs) can't get checkpointed
-        # as best just because it happened to land on a spike.
-        bal_acc_hist.append(val_bal_acc)
-        window       = bal_acc_hist[-smooth_win:]
+        # as best just because it happened to land on a spike. Smoothing is
+        # applied to val_ckpt_score now (bal_acc + macro_f1 composite),
+        # consistent with what "best" actually means below.
+        ckpt_score_hist.append(val_ckpt_score)
+        window       = ckpt_score_hist[-smooth_win:]
         smoothed_val = sum(window) / len(window)
 
         if smoothed_val > best_val:
@@ -585,7 +620,8 @@ def main(config_path: str):
             print(os.listdir(ckpt_dir))
 
             print(
-                f"  → New best (raw={val_bal_acc:.4f}, "
+                f"  → New best (raw ckpt_score={val_ckpt_score:.4f} "
+                f"[bal_acc={val_bal_acc:.4f}, macro_f1={val_macro_f1:.4f}], "
                 f"smoothed={smoothed_val:.4f}), saved."
             )
         else:
@@ -595,7 +631,7 @@ def main(config_path: str):
                 break
 
     print("\n" + "=" * 60)
-    print(f"Best val balanced accuracy (smoothed): {best_val:.4f}")
+    print(f"Best val checkpoint score (smoothed, bal_acc+macro_f1 composite): {best_val:.4f}")
     print(f"Checkpoint directory: {os.path.abspath(ckpt_dir)}")
 
     if os.path.exists(ckpt_dir):

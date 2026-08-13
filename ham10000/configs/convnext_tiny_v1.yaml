@@ -47,5 +47,6 @@ train:
   # densenet121_v13_samplerfix.yaml for why) -- no reason to launch a new
   # architecture straight into the same untested double-correction combo.
   sampler_power: 0.5
+  ckpt_score_weight: 0.5
   weight_decay: 0.0003
   best_metric_smoothing_window: 5
