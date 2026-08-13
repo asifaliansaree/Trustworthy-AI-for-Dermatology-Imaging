@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 from sklearn.metrics import (
-    balanced_accuracy_score, f1_score, precision_score, recall_score,
-    confusion_matrix, roc_auc_score,
+    balanced_accuracy_score, accuracy_score, f1_score, precision_score,
+    recall_score, confusion_matrix, roc_auc_score,
 )
 
 CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
@@ -69,6 +69,13 @@ def compute_ece(y_true, y_probs, n_bins: int = 15) -> float:
 def compute_metrics(y_true, y_pred, y_probs):
     metrics = {}
     metrics['balanced_accuracy'] = balanced_accuracy_score(y_true, y_pred)
+    # Raw accuracy on HAM10000 (67% nv) will look artificially high --
+    # a model that just predicts nv every time scores ~0.67 raw accuracy
+    # but ~0.14 balanced accuracy. Keep both: raw accuracy is what a
+    # naive reader expects to see, balanced_accuracy is what's actually
+    # meaningful on this class distribution. Never select checkpoints or
+    # judge the model on raw accuracy alone.
+    metrics['accuracy'] = accuracy_score(y_true, y_pred)
 
     per_class_f1 = f1_score(y_true, y_pred, average=None,
                              labels=list(range(len(CLASSES))), zero_division=0)

@@ -139,21 +139,45 @@ def main():
     print("CROSS-VALIDATION SUMMARY")
     print("=" * 70)
 
-    bal_accs = {}
+    # Pull every metric train.py now stores in the checkpoint payload
+    # (previously only val_balanced_accuracy was read here, so the CV
+    # summary silently dropped accuracy/macro_f1/precision/recall even
+    # though train.py was already computing them per fold).
+    metric_keys = {
+        "val_accuracy":          "accuracy",
+        "val_balanced_accuracy": "balanced_accuracy",
+        "val_macro_f1":          "macro_f1",
+        "val_precision":         "macro_precision",
+        "val_recall":            "macro_recall",
+    }
+    fold_metrics = {name: {} for name in metric_keys}
+
     for fold, ckpt_dir in ckpt_dirs.items():
         best_path = os.path.join(ckpt_dir, "best_model.pt")
         if not os.path.exists(best_path):
             print(f"fold {fold}: MISSING best_model.pt at {best_path}")
             continue
         payload = torch.load(best_path, map_location="cpu", weights_only=False)
-        bal_accs[fold] = payload["val_balanced_accuracy"]
-        print(f"fold {fold}: val_balanced_accuracy = {bal_accs[fold]:.4f}  "
-              f"(epoch {payload['epoch']})")
 
-    if bal_accs:
-        vals = list(bal_accs.values())
-        print("-" * 70)
-        print(f"Mean balanced accuracy over {len(vals)} fold(s): "
+        line = f"fold {fold} (epoch {payload['epoch']}): "
+        parts = []
+        for payload_key, label in metric_keys.items():
+            # Older checkpoints (trained before this metric existed) won't
+            # have every key -- skip missing ones instead of crashing the
+            # whole summary over one stale fold.
+            if payload_key not in payload:
+                continue
+            val = payload[payload_key]
+            fold_metrics[payload_key][fold] = val
+            parts.append(f"{label}={val:.4f}")
+        print(line + "  ".join(parts))
+
+    print("-" * 70)
+    for payload_key, label in metric_keys.items():
+        vals = list(fold_metrics[payload_key].values())
+        if not vals:
+            continue
+        print(f"Mean {label:<20s} over {len(vals)} fold(s): "
               f"{np.mean(vals):.4f} +/- {np.std(vals):.4f}")
     print("=" * 70)
 

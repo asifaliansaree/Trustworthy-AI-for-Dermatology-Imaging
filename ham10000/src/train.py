@@ -378,10 +378,74 @@ def run_epoch(model, loader, criterion, optimizer,
     return total_loss / max(n_batches, 1)
 
 
+# ── Config validation ─────────────────────────────────────────
+def validate_config(cfg: dict):
+    """
+    Fast sanity checks, run automatically at the top of main() before any
+    data loading or model building happens. Fails loudly with a clear
+    message instead of crashing 10 minutes in (or worse, silently training
+    something wrong -- e.g. a mismatched checkpoint_dir overwriting a
+    different architecture's best_model.pt).
+    """
+    problems = []
+
+    arch = cfg.get("model", {}).get("architecture")
+    from model import ARCH_REGISTRY
+    if arch not in ARCH_REGISTRY:
+        problems.append(
+            f"model.architecture '{arch}' is not registered in "
+            f"model.py's ARCH_REGISTRY ({list(ARCH_REGISTRY.keys())})."
+        )
+
+    loss_cfg = cfg.get("loss", {})
+    if loss_cfg.get("alpha_mode") == "effective_num":
+        counts = loss_cfg.get("class_counts")
+        n_classes = cfg.get("model", {}).get("num_classes", 7)
+        if not counts:
+            problems.append("loss.alpha_mode=effective_num but loss.class_counts is missing.")
+        elif len(counts) != n_classes:
+            problems.append(
+                f"loss.class_counts has {len(counts)} entries but "
+                f"model.num_classes={n_classes} -- they must match."
+            )
+
+    # Checkpoint-dir collision: if a checkpoint already exists there and
+    # was trained as a DIFFERENT architecture, this run's best_model.pt
+    # would silently overwrite it and run_cv.py's summary would then be
+    # reading a mismatched checkpoint under this config's fold key.
+    ckpt_dir = cfg.get("output", {}).get("checkpoint_dir")
+    if ckpt_dir:
+        best_path = os.path.join(ckpt_dir, "best_model.pt")
+        if os.path.exists(best_path):
+            try:
+                existing = torch.load(best_path, map_location="cpu", weights_only=False)
+                existing_arch = existing.get("config", {}).get("model", {}).get("architecture")
+                if existing_arch and existing_arch != arch:
+                    problems.append(
+                        f"output.checkpoint_dir '{ckpt_dir}' already holds a "
+                        f"best_model.pt trained as '{existing_arch}', but this "
+                        f"config is '{arch}'. Point logging.checkpoint_dir / "
+                        f"output.checkpoint_dir somewhere else before running."
+                    )
+            except Exception:
+                pass  # don't block a run over an unreadable old checkpoint
+
+    if not torch.cuda.is_available():
+        print("  [!] No CUDA GPU visible -- training will run on CPU (slow).")
+
+    if problems:
+        msg = "\n".join(f"  - {p}" for p in problems)
+        raise ValueError(f"Config validation failed for this run:\n{msg}")
+
+    print("  [✓] Config validation passed.")
+
+
 # ── Main ──────────────────────────────────────────────────────
 def main(config_path: str):
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
+
+    validate_config(cfg)
 
     set_seed(cfg["seed"])
 
@@ -507,6 +571,7 @@ def main(config_path: str):
             model, loaders["val"], device, use_meta
         )
         metrics = evaluate.compute_metrics(y_true, y_pred, y_probs)
+        val_accuracy  = metrics["accuracy"]
         val_bal_acc   = metrics["balanced_accuracy"]
         val_macro_f1  = metrics["macro_f1"]
         val_precision = metrics["macro_precision"]
@@ -551,7 +616,8 @@ def main(config_path: str):
         print(
             f"Epoch {epoch:3d}/{epochs} | "
             f"train={tr_loss:.4f} | val={val_loss:.4f} | "
-            f"bal_acc={val_bal_acc:.4f} | macro_f1={val_macro_f1:.4f} | "
+            f"acc={val_accuracy:.4f} | bal_acc={val_bal_acc:.4f} | "
+            f"macro_f1={val_macro_f1:.4f} | "
             f"precision={val_precision:.4f} | recall={val_recall:.4f} | "
             f"ckpt_score={val_ckpt_score:.4f} | lr={lr_now:.2e} | "
             f"{elapsed:.0f}s"
@@ -562,12 +628,13 @@ def main(config_path: str):
             w = csv.writer(f)
             if epoch == 1:
                 w.writerow(["epoch","train_loss","val_loss",
-                             "val_bal_acc","val_macro_f1",
+                             "val_accuracy","val_bal_acc","val_macro_f1",
                              "val_precision","val_recall",
                              "val_ckpt_score","lr"])
             w.writerow([epoch,
                         round(tr_loss, 4),
                         round(val_loss, 4),
+                        round(val_accuracy, 4),
                         round(val_bal_acc, 4),
                         round(val_macro_f1, 4),
                         round(val_precision, 4),
@@ -581,6 +648,7 @@ def main(config_path: str):
             "model_state_dict":    model.state_dict(),
             "optimizer_state":     optimizer.state_dict(),
             "val_balanced_accuracy": val_bal_acc,
+            "val_accuracy":         val_accuracy,
             "val_macro_f1":         val_macro_f1,
             "val_precision":        val_precision,
             "val_recall":           val_recall,
