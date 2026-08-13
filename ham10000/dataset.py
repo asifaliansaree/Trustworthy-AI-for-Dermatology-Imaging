@@ -5,15 +5,20 @@ optional metadata encoder support.
 import os
 import glob
 import pandas as pd
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as T
 from typing import Optional
 
 CLASS_MAP = {
-    "mel": 0, "nv": 1, "bcc": 2,
-    "akiec": 3, "bkl": 4, "df": 5, "vasc": 6,
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
+    "vasc": 6,
 }
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -181,9 +186,26 @@ class HAM10000Dataset(Dataset):
             )
         return path
 
-    def __getitem__(self, idx: int):
-        row   = self.df.iloc[idx]
-        image = Image.open(self._find_image(row["image_id"])).convert("RGB")
+    def __getitem__(self, idx: int, _depth: int = 0):
+        row = self.df.iloc[idx]
+
+        try:
+            image = Image.open(self._find_image(row["image_id"])).convert("RGB")
+        except (UnidentifiedImageError, OSError, FileNotFoundError) as e:
+            # A single corrupt/truncated/missing image should not kill an
+            # entire multi-hour training run. Log it and fall back to a
+            # different sample instead. _depth guards against the (very
+            # unlikely) case where many consecutive images are bad, so we
+            # fail loudly rather than recursing forever.
+            if _depth >= 20:
+                raise RuntimeError(
+                    f"20 consecutive unreadable images starting at idx {idx} "
+                    f"-- this looks like a systemic dataset problem, not a "
+                    f"one-off bad file. Last error: {e}"
+                ) from e
+            print(f"[WARN] Skipping unreadable image '{row['image_id']}': {e}")
+            return self.__getitem__((idx + 1) % len(self), _depth=_depth + 1)
+
         image = self.transform(image)
         label = CLASS_MAP[row["dx"]]
 
