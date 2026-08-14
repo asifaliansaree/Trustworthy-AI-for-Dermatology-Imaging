@@ -1,0 +1,48 @@
+======================================================================
+REPORT — densenet121_v13_samplerfix  (5-fold CV, out-of-fold aggregate)
+======================================================================
+
+Overall metrics (mean +/- std across folds):
+  accuracy              : 0.8513 +/- 0.0086
+  balanced_accuracy     : 0.7481 +/- 0.0192
+  macro_f1              : 0.7504 +/- 0.0177
+  macro_precision       : 0.7645 +/- 0.0181
+  macro_recall          : 0.7481 +/- 0.0192
+  ece                   : 0.0311 +/- 0.0167
+  roc_auc_macro         : 0.9696 +/- 0.0036
+
+Per-lesion metrics (mean +/- std across folds):
+  --- f1 ---
+    akiec : 0.7293 +/- 0.1109
+    bcc   : 0.7104 +/- 0.0272
+    bkl   : 0.5954 +/- 0.0423
+    df    : 0.9292 +/- 0.0058
+    mel   : 0.6406 +/- 0.0441
+    nv    : 0.7808 +/- 0.0355
+    vasc  : 0.8673 +/- 0.0603
+  --- precision ---
+    akiec : 0.8045 +/- 0.0892
+    bcc   : 0.8168 +/- 0.0289
+    bkl   : 0.6330 +/- 0.0425
+    df    : 0.9127 +/- 0.0104
+    mel   : 0.5806 +/- 0.0653
+    nv    : 0.7527 +/- 0.0446
+    vasc  : 0.8511 +/- 0.0801
+  --- recall ---
+    akiec : 0.6696 +/- 0.1278
+    bcc   : 0.6315 +/- 0.0505
+    bkl   : 0.5652 +/- 0.0623
+    df    : 0.9465 +/- 0.0072
+    mel   : 0.7219 +/- 0.0473
+    nv    : 0.8134 +/- 0.0454
+    vasc  : 0.8884 +/- 0.0660
+
+Aggregate confusion matrix (summed across all 5 folds, out-of-fold):
+         akiec     bcc     bkl      df     mel      nv    vasc
+ akiec     236      28      32       2      15      14       0
+   bcc      35     418      10       5      10      33       3
+   bkl      84      36     694       3     116     166       0
+    df       6      10       3      77       8      11       0
+   mel      28      26      43       0     629     377      10
+    nv      23      36      69       7     214    6346      10
+  vasc       0       3       1       1       4       7     126
