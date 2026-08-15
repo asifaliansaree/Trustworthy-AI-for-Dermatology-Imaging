@@ -6,9 +6,9 @@ data:
   img_size: 224
   num_workers: 2
 logging:
-  checkpoint_dir: ham10000/checkpoints/convnext_tiny_v1_fold0
-  experiment_name: convnext_tiny_v1_fold0
-  save_dir: experiments/convnext_tiny_v1_fold0
+  checkpoint_dir: ham10000/checkpoints/resnet50_v12recipe_fold0
+  experiment_name: resnet50_v12recipe_fold0
+  save_dir: experiments/resnet50_v12recipe_fold0
 loss:
   alpha_mode: effective_num
   class_counts:
@@ -24,19 +24,18 @@ loss:
   label_smoothing: 0.1
   name: weighted_focal
 model:
-  architecture: convnext_tiny
+  architecture: resnet50
   dropout: 0.35
   freeze_epochs: 0
   metadata_dim: 0
   num_classes: 7
   pretrained: true
 output:
-  checkpoint_dir: ham10000/checkpoints/convnext_tiny_v1_fold0
+  checkpoint_dir: ham10000/checkpoints/resnet50_v12recipe_fold0
 seed: 42
 train:
   batch_size: 32
   best_metric_smoothing_window: 5
-  ckpt_score_weight: 0.5
   early_stopping_patience: 12
   ema_decay: 0.999
   epochs: 45
@@ -44,7 +43,6 @@ train:
   lr: 0.0001
   lr_warmup_epochs: 3
   max_grad_norm: 1.0
-  sampler_power: 0.5
   scheduler: cosine
   use_ema: true
   use_weighted_sampler: true
