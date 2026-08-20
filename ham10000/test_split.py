@@ -1,7 +1,11 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 from sklearn.utils.class_weight import compute_class_weight
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dataset import CLASS_MAP
 
 # Load split CSV
 csv_path = os.path.join("ham10000", "data", "HAM10000_split.csv")
@@ -32,29 +36,15 @@ print("✅ No lesion leakage detected.\n")
 # ----------------------------
 # Class weights (train only)
 # ----------------------------
-# This MUST match the label index used everywhere else in the pipeline
-# (dataset.py's CLASS_MAP, train.py's CLASS_MAP) -- mel:0, nv:1, bcc:2,
-# akiec:3, bkl:4, df:5, vasc:6. This was previously alphabetical
-# (akiec:0, bcc:1, bkl:2, df:3, mel:4, nv:5, vasc:6), which meant every
-# weight in the saved class_weights.npy landed on the WRONG class index
-# whenever a config used it directly (loss.alpha_mode: inverse, or plain
-# cross_entropy/label_smoothing with weight=class_weights). Configs using
-# loss.alpha_mode: effective_num (e.g. resnet50_v12recipe.yaml) were NOT
-# affected -- that path recomputes its own weights from loss.class_counts
-# in the YAML and only reads class_weights.npy for its .device attribute.
+# This MUST match the label index used everywhere else in the pipeline.
+# CLASS_MAP is now imported directly from dataset.py (the single source
+# of truth) instead of being hand-copied here, so this file can no longer
+# silently drift out of sync with it. dataset.py currently defines it
+# alphabetically (akiec:0, bcc:1, bkl:2, df:3, mel:4, nv:5, vasc:6).
 #
 # IMPORTANT: this code fix alone does not correct any class_weights.npy
-# file already saved to disk with the old (wrong) ordering -- rerun this
-# script to regenerate it after pulling this fix.
-CLASS_MAP = {
-    "mel": 0,
-    "nv": 1,
-    "bcc": 2,
-    "akiec": 3,
-    "bkl": 4,
-    "df": 5,
-    "vasc": 6,
-}
+# file already saved to disk with a stale ordering -- rerun this script
+# to regenerate it after pulling this fix.
 
 train_df = df[df["split"] == "train"].copy()
 train_df["label"] = train_df["dx"].map(CLASS_MAP)

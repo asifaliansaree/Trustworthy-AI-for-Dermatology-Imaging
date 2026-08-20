@@ -1,4 +1,4 @@
-from dataset import HAM10000Dataset
+from dataset import HAM10000Dataset, CLASS_MAP
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
@@ -31,7 +31,9 @@ print("Image shape:", image.shape)
 print("Numeric label:", label)
 print("Diagnosis:", dataset.df.iloc[0]["dx"])
 
-print(dataset.label_map)
+# dataset.label_map no longer exists -- CLASS_MAP became a module-level
+# constant in dataset.py rather than a HAM10000Dataset attribute.
+print(CLASS_MAP)
 print(image.min())
 print(image.max())
 

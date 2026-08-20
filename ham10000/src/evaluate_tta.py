@@ -36,14 +36,17 @@ for p in [_THIS, _ROOT]:
 
 from model            import build_model
 from metadata_encoder import MetadataEncoder
+from dataset           import CLASS_MAP
 
-# Order must match CLASS_MAP's indices (0..6), not alphabetical order --
-# these feed target_names / per-class zips below, so a mismatch here
-# silently mislabels every per-class number while leaving the aggregate
-# scores (balanced accuracy, macro F1) correct, since those are computed
-# on the integer labels directly. Matches evaluate.py / evaluate_test.py.
-CLASSES    = ["mel", "nv", "bcc", "akiec", "bkl", "df", "vasc"]
-CLASS_MAP  = {"mel":0,"nv":1,"bcc":2,"akiec":3,"bkl":4,"df":5,"vasc":6}
+# CLASS_MAP is imported directly from dataset.py (the single source of
+# truth) instead of being hand-copied here, so this file can no longer
+# silently drift out of sync with it. CLASSES is derived from CLASS_MAP
+# so its order always matches the integer label indices used for
+# target_names / per-class zips below -- a mismatch there would silently
+# mislabel every per-class number while leaving the aggregate scores
+# (balanced accuracy, macro F1) correct, since those are computed on the
+# integer labels directly.
+CLASSES    = sorted(CLASS_MAP, key=CLASS_MAP.get)
 MEAN       = [0.485, 0.456, 0.406]
 STD        = [0.229, 0.224, 0.225]
 

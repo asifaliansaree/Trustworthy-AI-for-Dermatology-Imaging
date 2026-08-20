@@ -56,16 +56,15 @@ import pandas as pd
 import torch
 import yaml
 
+_THIS = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_THIS)
+for _p in [_THIS, _ROOT]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from dataset import CLASS_MAP  # single source of truth, no more hand-copy
+
 N_FOLDS = 5
-CLASS_MAP = {
-    "akiec": 0,
-    "bcc": 1,
-    "bkl": 2,
-    "df": 3,
-    "mel": 4,
-    "nv": 5,
-    "vasc": 6,
-}
 CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)  # index order -- matches evaluate.py's CLASSES
 TMP_CONFIG_DIR = "ham10000/configs/_cv_tmp"
 

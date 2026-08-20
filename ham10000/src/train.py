@@ -29,7 +29,7 @@ for _p in [_THIS, _ROOT]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from dataset          import HAM10000Dataset
+from dataset          import HAM10000Dataset, CLASS_MAP
 from model            import build_model
 from losses           import build_loss
 from metadata_encoder import MetadataEncoder
@@ -87,17 +87,9 @@ class EMA:
 
 
 # ── Data loaders ──────────────────────────────────────────────
-# Maps the HAM10000 diagnosis codes to the same class indices used
-# elsewhere in the pipeline (dataset.py / class_weights.npy ordering).
-CLASS_MAP = {
-    "akiec": 0,
-    "bcc": 1,
-    "bkl": 2,
-    "df": 3,
-    "mel": 4,
-    "nv": 5,
-    "vasc": 6,
-}
+# CLASS_MAP is imported directly from dataset.py (the single source of
+# truth) instead of being hand-copied here, so this file can no longer
+# silently drift out of sync with it.
 
 
 def build_loaders(cfg: dict, encoder=None) -> dict:

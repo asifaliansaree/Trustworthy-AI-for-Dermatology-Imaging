@@ -51,9 +51,16 @@ for p in [_THIS, _ROOT]:
 
 from model import build_model
 from metadata_encoder import MetadataEncoder
+from dataset import CLASS_MAP
 
-CLASSES   = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
-CLASS_MAP = {"mel": 0, "nv": 1, "bcc": 2, "akiec": 3, "bkl": 4, "df": 5, "vasc": 6}
+# CLASS_MAP is imported directly from dataset.py (the single source of
+# truth) instead of being hand-copied here. The old hardcoded CLASSES
+# constant here was alphabetical while CLASS_MAP was mel-first -- CLASSES
+# was only ever used for array shape (len(CLASSES)), never for encoding,
+# so it silently made the file look safer than it was. CLASSES is now
+# derived from CLASS_MAP so it can never drift out of order relative to
+# the label indices actually used for ground-truth encoding.
+CLASSES   = sorted(CLASS_MAP, key=CLASS_MAP.get)
 MEAN      = [0.485, 0.456, 0.406]
 STD       = [0.229, 0.224, 0.225]
 
@@ -250,13 +257,11 @@ def main():
     else:
         raise ValueError("--weights required when ensembling more than 2 models.")
 
-    # IMPORTANT: target_names must follow the label-index order used by
-    # CLASS_MAP (how TestDataset encodes y_true), NOT the alphabetical
-    # CLASSES list — those two orderings differ and previously caused
-    # every row in this report to be mislabeled.
-    ordered_target_names = [c for c, i in sorted(CLASS_MAP.items(), key=lambda kv: kv[1])]
+    # target_names must follow the label-index order used by CLASS_MAP
+    # (how TestDataset encodes y_true). CLASSES is now derived from
+    # CLASS_MAP above, so the two can no longer disagree.
     report = classification_report(
-        all_labels, preds, target_names=ordered_target_names, digits=4, zero_division=0
+        all_labels, preds, target_names=CLASSES, digits=4, zero_division=0
     )
     print(f"\n{report}")
 

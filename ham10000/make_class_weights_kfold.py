@@ -12,22 +12,16 @@ Usage:
 """
 
 import argparse
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sklearn.utils.class_weight import compute_class_weight
 
-
-CLASS_MAP = {
-    "akiec": 0,
-    "bcc": 1,
-    "bkl": 2,
-    "df": 3,
-    "mel": 4,
-    "nv": 5,
-    "vasc": 6,
-}
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dataset import CLASS_MAP  # single source of truth, no more hand-copy
 
 
 def build_parser() -> argparse.ArgumentParser:

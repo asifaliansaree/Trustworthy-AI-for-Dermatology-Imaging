@@ -47,6 +47,8 @@ identical arrays before doing anything else, and refuses to run if they
 are -- that exact bug (a mislabeled/duplicated file) is what blocked this
 analysis the first time round.
 """
+import os
+import sys
 import argparse
 import numpy as np
 from sklearn.metrics import (
@@ -54,7 +56,21 @@ from sklearn.metrics import (
     classification_report, confusion_matrix,
 )
 
-CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
+_THIS = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_THIS)
+for p in [_THIS, _ROOT]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from dataset import CLASS_MAP
+
+# CLASSES is derived from dataset.py's CLASS_MAP instead of being
+# hardcoded, so it can no longer drift out of sync with it. This script
+# was already self-protecting -- the real class order comes from the
+# .npz files' own `classes` arrays, and the assert below just checks
+# that this list agrees with them -- but a stale hardcoded list still
+# risked a confusing crash if dataset.py's ordering ever changed again.
+CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)
 PRIORITY_CLASSES = ['mel', 'akiec']  # order matters: mel checked first
 
 

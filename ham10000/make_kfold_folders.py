@@ -24,7 +24,11 @@ Usage
 import argparse
 import os
 import shutil
+import sys
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dataset import CLASS_MAP  # single source of truth, no more hand-copy
 
 KFOLD_CSV = "ham10000/data/HAM10000_kfold_split.csv"
 IMG_DIRS = [
@@ -33,7 +37,7 @@ IMG_DIRS = [
 ]
 OUT_ROOT = "ham10000/data/kfold"
 N_FOLDS = 5
-CLASSES = ["mel", "nv", "bcc", "akiec", "bkl", "df", "vasc"]
+CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)
 
 
 def find_image(image_id: str) -> str:

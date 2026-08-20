@@ -1,3 +1,5 @@
+import os
+import sys
 import numpy as np
 import torch
 from sklearn.metrics import (
@@ -5,15 +7,19 @@ from sklearn.metrics import (
     recall_score, confusion_matrix, roc_auc_score,
 )
 
-CLASS_MAP = {
-    "akiec",
-    "bcc",
-    "bkl",
-    "df",
-    "mel",
-    "nv",
-    "vasc"
-}
+_THIS = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_THIS)
+for p in [_THIS, _ROOT]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from dataset import CLASS_MAP
+
+# CLASSES is derived from dataset.py's CLASS_MAP (the single source of
+# truth) so per-class metric labels below (target_names / dict keys via
+# zip(CLASSES, ...)) always line up with the label indices used
+# elsewhere in the pipeline.
+CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)
 
 
 @torch.no_grad()

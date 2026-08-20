@@ -33,18 +33,23 @@ Usage
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dataset import CLASS_MAP  # single source of truth, no more hand-copy
+
 # --------------------------------------------------------------------------
 # Configuration
 # --------------------------------------------------------------------------
 N_FOLDS = 5
 RANDOM_STATE = 42
-ALL_CLASSES = ["mel", "nv", "bcc", "akiec", "bkl", "df", "vasc"]
+ALL_CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 METADATA_CSV = SCRIPT_DIR / "data" / "HAM10000_metadata.csv"

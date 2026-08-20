@@ -23,11 +23,17 @@ for p in (_PROJECT_ROOT, _THIS_DIR):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from dataset import HAM10000Dataset
+from dataset import HAM10000Dataset, CLASS_MAP
 from metadata_encoder import MetadataEncoder
 from model import DermaNet
 
-CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
+# Ground truth already comes from HAM10000Dataset (imported straight from
+# dataset.py), so accuracy/F1 were always correct here -- but CLASSES was
+# a hardcoded, out-of-date copy used only for display (target_names /
+# per-class zips), which mislabeled the printed classification report.
+# Deriving it from the imported CLASS_MAP keeps display order in sync
+# with dataset.py automatically.
+CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)
 
 
 @torch.no_grad()
