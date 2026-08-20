@@ -5,7 +5,15 @@ from sklearn.metrics import (
     recall_score, confusion_matrix, roc_auc_score,
 )
 
-CLASSES = ['mel', 'nv', 'bcc', 'akiec', 'bkl', 'df', 'vasc']
+CLASS_MAP = {
+    "akiec",
+    "bcc",
+    "bkl",
+    "df",
+    "mel",
+    "nv",
+    "vasc"
+}
 
 
 @torch.no_grad()

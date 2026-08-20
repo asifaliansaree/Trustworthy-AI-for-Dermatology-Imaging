@@ -1,0 +1,449 @@
+{
+  "seed": 42,
+  "fold": 0,
+  "built_from_checkpoint": "convnext-tiny_fold0",
+  "note": "Image list is fold-scoped, not checkpoint-scoped -- reuse these exact image_ids when applying other architectures at this same fold, for an apples-to-apples comparison.",
+  "cases": [
+    {
+      "image_id": "ISIC_0026178",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "akiec",
+      "pred_idx": 0,
+      "confidence": 0.3744170069694519,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0027506",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "akiec",
+      "pred_idx": 0,
+      "confidence": 0.7923763394355774,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0026927",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "akiec",
+      "pred_idx": 0,
+      "confidence": 0.9379409551620483,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0032455",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "akiec",
+      "pred_idx": 0,
+      "confidence": 0.9906215667724609,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0026549",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.42071324586868286,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0029371",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.5627816319465637,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0030341",
+      "true_label": "akiec",
+      "true_idx": 0,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.9621816873550415,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0026337",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.2503981590270996,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0029857",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.8713764548301697,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0030782",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.9574956893920898,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0029391",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.9926788806915283,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0027814",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "akiec",
+      "pred_idx": 0,
+      "confidence": 0.38005974888801575,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0028858",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.8056290745735168,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0033366",
+      "true_label": "bcc",
+      "true_idx": 1,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.9874542951583862,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0031819",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.32092714309692383,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0030067",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.886110782623291,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0033200",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.9712802767753601,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0033631",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.9944855570793152,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0026728",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.29920679330825806,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0028264",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "akiec",
+      "pred_idx": 0,
+      "confidence": 0.7042738795280457,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0032113",
+      "true_label": "bkl",
+      "true_idx": 2,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.9729255437850952,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0030555",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "df",
+      "pred_idx": 3,
+      "confidence": 0.46077147126197815,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0030015",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "df",
+      "pred_idx": 3,
+      "confidence": 0.6556996703147888,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0031443",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "df",
+      "pred_idx": 3,
+      "confidence": 0.8454031348228455,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0029130",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "df",
+      "pred_idx": 3,
+      "confidence": 0.9032799005508423,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0031457",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.37930828332901,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0032468",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.5995043516159058,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0025980",
+      "true_label": "df",
+      "true_idx": 3,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.8947974443435669,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0028968",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.3544228672981262,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0033586",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.7462623119354248,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0034145",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.9153693914413452,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0033426",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.99140864610672,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0033603",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.3301367461681366,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0024400",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.7602207660675049,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0026892",
+      "true_label": "mel",
+      "true_idx": 4,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.9834175705909729,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0029994",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.4252917766571045,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0026615",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.9500806331634521,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0024889",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.9673534035682678,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0026251",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.9920675754547119,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0026166",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.29953527450561523,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0032882",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.7011640071868896,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0033794",
+      "true_label": "nv",
+      "true_idx": 5,
+      "pred_label": "bkl",
+      "pred_idx": 2,
+      "confidence": 0.9630425572395325,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0033762",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "vasc",
+      "pred_idx": 6,
+      "confidence": 0.43582969903945923,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0030283",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "vasc",
+      "pred_idx": 6,
+      "confidence": 0.8722232580184937,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0031706",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "vasc",
+      "pred_idx": 6,
+      "confidence": 0.9851390719413757,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0024669",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "vasc",
+      "pred_idx": 6,
+      "confidence": 0.9911105632781982,
+      "correct": true
+    },
+    {
+      "image_id": "ISIC_0029486",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "nv",
+      "pred_idx": 5,
+      "confidence": 0.5117012858390808,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0033230",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "bcc",
+      "pred_idx": 1,
+      "confidence": 0.7461813688278198,
+      "correct": false
+    },
+    {
+      "image_id": "ISIC_0032775",
+      "true_label": "vasc",
+      "true_idx": 6,
+      "pred_label": "mel",
+      "pred_idx": 4,
+      "confidence": 0.9708550572395325,
+      "correct": false
+    }
+  ]
+}

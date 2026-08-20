@@ -57,7 +57,15 @@ import torch
 import yaml
 
 N_FOLDS = 5
-CLASS_MAP = {"mel": 0, "nv": 1, "bcc": 2, "akiec": 3, "bkl": 4, "df": 5, "vasc": 6}
+CLASS_MAP = {
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
+    "vasc": 6,
+}
 CLASSES = sorted(CLASS_MAP, key=CLASS_MAP.get)  # index order -- matches evaluate.py's CLASSES
 TMP_CONFIG_DIR = "ham10000/configs/_cv_tmp"
 

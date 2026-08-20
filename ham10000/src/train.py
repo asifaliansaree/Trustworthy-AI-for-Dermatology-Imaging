@@ -89,7 +89,15 @@ class EMA:
 # ── Data loaders ──────────────────────────────────────────────
 # Maps the HAM10000 diagnosis codes to the same class indices used
 # elsewhere in the pipeline (dataset.py / class_weights.npy ordering).
-CLASS_MAP = {"mel": 0, "nv": 1, "bcc": 2, "akiec": 3, "bkl": 4, "df": 5, "vasc": 6}
+CLASS_MAP = {
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
+    "vasc": 6,
+}
 
 
 def build_loaders(cfg: dict, encoder=None) -> dict:
