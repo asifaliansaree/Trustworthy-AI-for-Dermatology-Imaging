@@ -12,12 +12,12 @@ logging:
 loss:
   alpha_mode: effective_num
   class_counts:
-  - 891
-  - 5364
-  - 411
   - 261
+  - 411
   - 879
   - 92
+  - 891
+  - 5364
   - 114
   effective_num_beta: 0.99
   focal_gamma: 1.5
