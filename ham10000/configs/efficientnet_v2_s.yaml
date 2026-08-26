@@ -1,0 +1,39 @@
+config:
+  seed: 42
+  architecture: efficientnet_v2_s
+  dropout: 0.35
+  num_classes: 7
+  class_order:
+    - akiec
+    - bcc
+    - bkl
+    - df
+    - mel
+    - nv
+    - vasc         
+  batch_size: 32
+  epochs_max: 45
+  early_stopping_patience: 12
+  lr: 0.0001
+  lr_warmup_epochs: 3
+  weight_decay: 0.0003
+  scheduler: cosine
+  loss: weighted_focal
+  focal_gamma: 1.5
+  label_smoothing: 0.1
+  use_ema: true
+  ema_decay: 0.999
+  use_weighted_sampler: true
+  freeze_epochs: 0
+  n_folds: 5    
+   class_weights:
+    - 4.37527322769165    # akiec
+    - 2.7834908962249756  # bcc
+    - 1.3018327951431274  # bkl
+    - 12.440994262695312  # df
+    - 1.2854576110839844  # mel
+    - 0.21338020265102386 # nv
+    - 10.07545280456543   # vasc    
+  fold_root: /kaggle/input/datasets/fatimazunaira/kfolds-rtest-ham10000
+  held_out_test_set: false
+  evaluation_method: pooled_out_of_fold_predictions
