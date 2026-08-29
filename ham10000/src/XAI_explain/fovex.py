@@ -207,8 +207,66 @@ def generate_explanation(model, image_tensor, target_class, device, fovex_wrappe
     return compute_fovex(fovex_wrapper, image_tensor, target_class, device, hp, seed=seed)
 
 
+def fixation_to_pixel(fixation_points, H, W, debug=False):
+    """
+    Convert FovEx's internal fixation coordinates to matplotlib pixel
+    coordinates. This is the ONE place that conversion happens -- both
+    save_fovex_figure() and run_hp_search() call this now, instead of each
+    re-deriving (and, previously, each getting wrong) their own px/py.
+
+    --- Coordinate convention, traced from fovex_lib/FovEx_patched.py ---
+    create_grid(): `xa, ya = torch.meshgrid([t, t])` with NO `indexing=`
+    argument. PyTorch's meshgrid has always defaulted to `indexing='ij'`
+    when unspecified. Under 'ij', the FIRST returned tensor varies along
+    axis 0 (rows) and is constant along axis 1; the SECOND varies along
+    axis 1 (columns) and is constant along axis 0. Verified directly:
+        t = linspace(-1,1,5); xa,ya = meshgrid([t,t])  # 'ij' semantics
+        xa[i,j] == t[i]   (row-indexed)
+        ya[i,j] == t[j]   (col-indexed)
+
+    calc_gaussian() then does `xa - positions[:,0]`, `ya - positions[:,1]`,
+    i.e. positions[:,0] centers the Gaussian along the ROW/vertical axis,
+    positions[:,1] centers it along the COLUMN/horizontal axis. The same
+    positions tensor (as `foveation_pos` / `best_foveation_pos` /
+    `scanpaths`) is what run_optimization() saves as the returned
+    scanpath -- so `fixation_points[:, 0] == row/y` and
+    `fixation_points[:, 1] == col/x` everywhere fixation_points is used,
+    including in get_heat_maps(), which builds the saved heatmap the same
+    way. The heatmap itself was therefore always self-consistent; only the
+    matplotlib plotting code (which needs x first, then y) had the swap.
+
+    Empirically confirmed against all 68 saved (raw heatmap, fixation)
+    pairs in results/xai/fovex/convnext-tiny_fold3/: interpreting
+    fixation_points as (y, x) (this function) gives a mean fixation
+    heatmap percentile of 93.5 (100% of cases > 80th percentile), vs. 70.9
+    (31% of cases > 80th percentile) for the old (x, y) interpretation --
+    and every one of 3 other candidate swaps/flips tested scored worse
+    than both, none within noise of this one.
+
+    Returns
+    -------
+    fix_x, fix_y : the raw normalized [-1, 1] coordinates, split out with
+        unambiguous names (fix_x is fixation_points[:, 1], fix_y is
+        fixation_points[:, 0] -- yes, the array's column 0 is y, not x).
+    pixel_x, pixel_y : unclamped pixel-space coordinates, x scaled by W
+        (width, horizontal), y scaled by H (height, vertical).
+    """
+    fix_y = fixation_points[:, 0]   # row / vertical component, in [-1, 1]
+    fix_x = fixation_points[:, 1]   # column / horizontal component, in [-1, 1]
+
+    pixel_x = (fix_x + 1) / 2 * W   # x maps to WIDTH
+    pixel_y = (fix_y + 1) / 2 * H   # y maps to HEIGHT
+
+    if debug:
+        print(f"{'Fix#':>4} {'raw_y':>9} {'raw_x':>9} {'pixel_x':>9} {'pixel_y':>9}")
+        for i, (ry, rx, pxv, pyv) in enumerate(zip(fix_y, fix_x, pixel_x, pixel_y)):
+            print(f"{i+1:>4} {ry:9.4f} {rx:9.4f} {pxv:9.2f} {pyv:9.2f}")
+
+    return fix_x, fix_y, pixel_x, pixel_y
+
+
 def save_fovex_figure(display, heatmap, overlay, fixation_points, title, pred_name, true_name,
-                       conf, save_path, method_name="FovEx"):
+                       conf, save_path, method_name="FovEx", debug_coords=False):
     """Same 3-panel layout as IG/RISE, plus numbered fixation points drawn
     on the overlay panel -- FovEx's distinctive output the other two
     methods don't have."""
@@ -233,8 +291,15 @@ def save_fovex_figure(display, heatmap, overlay, fixation_points, title, pred_na
     margin_x = max(18, int(0.05 * W))
     margin_bottom = max(18, int(0.05 * H))
     margin_top = max(34, int(0.10 * H))
-    px = np.clip((fixation_points[:, 0] + 1) / 2 * W, margin_x, W - 1 - margin_x)
-    py = np.clip((fixation_points[:, 1] + 1) / 2 * H, margin_top, H - 1 - margin_bottom)
+    # FoVEx stores fixation positions as (row/y, column/x) -- see
+    # fixation_to_pixel()'s docstring for the full derivation. Matplotlib
+    # plotting requires x first, then y. margin_x/margin_top/margin_bottom
+    # are (correctly) sized against W/H respectively -- verify that stays
+    # true: x-margins must clip against W (horizontal), y-margins against H
+    # (vertical), which is what the clip() calls below do.
+    _, _, pixel_x, pixel_y = fixation_to_pixel(fixation_points, H, W, debug=debug_coords)
+    px = np.clip(pixel_x, margin_x, W - 1 - margin_x)
+    py = np.clip(pixel_y, margin_top, H - 1 - margin_bottom)
     # Pure bright red, per request. Note: 'jet' (the heatmap colormap) DOES
     # pass through red/orange at its hottest values -- the exact region
     # fixations tend to converge on -- so pure red can camouflage there.
@@ -437,8 +502,14 @@ def run_hp_search(cases, out_root, model, device, device_str, base_hp,
                         margin_x = max(14, int(0.05 * W))
                         margin_bottom = max(14, int(0.05 * H))
                         margin_top = max(26, int(0.10 * H))
-                        px = np.clip((fixations[:, 0] + 1) / 2 * W, margin_x, W - 1 - margin_x)
-                        py = np.clip((fixations[:, 1] + 1) / 2 * H, margin_top, H - 1 - margin_bottom)
+                        # Same (row/y, col/x) convention as save_fovex_figure --
+                        # see fixation_to_pixel()'s docstring. This call site
+                        # had the identical swap bug, independently, before
+                        # this fix (the two functions never shared conversion
+                        # code, so fixing one didn't fix the other).
+                        _, _, pixel_x, pixel_y = fixation_to_pixel(fixations, H, W)
+                        px = np.clip(pixel_x, margin_x, W - 1 - margin_x)
+                        py = np.clip(pixel_y, margin_top, H - 1 - margin_bottom)
                         FIXATION_COLOR = '#FF0000'
                         outline = [pe.withStroke(linewidth=2.2, foreground='white')]
                         axes[j].plot(px, py, '-', color='white', linewidth=1, alpha=0.7, clip_on=True)
